@@ -411,18 +411,17 @@
 
     <!-- ================= HALAMAN LOGIN ================= -->
     <div id="login-section">
-        <!-- Logo Ma'had Al-Bashiroh -->
         <img src="logo.jpg" alt="Logo Ma'had Al-Bashiroh" class="logo-login">
         <h2>Portal Wali Santri</h2>
         <p>Masukkan ID Santri untuk mengakses informasi dan administrasi asrama.</p>
         
         <div class="input-group">
             <label for="id-santri-input">ID Santri</label>
-            <input type="text" id="id-santri-input" placeholder="Masukkan ID (Contoh: 4166854797)" />
+            <input type="text" id="id-santri-input" placeholder="Masukkan ID Santri" />
         </div>
 
         <button class="btn-primary" onclick="handleLogin()">Masuk Dashboard</button>
-        <p id="login-error" style="color: #dc2626; display: none; margin-top: 1rem; font-weight: 500;">ID Santri tidak ditemukan.</p>
+        <p id="login-error" style="color: #dc2626; display: none; margin-top: 1rem; font-weight: 500;"></p>
     </div>
 
     <!-- ================= HALAMAN DASHBOARD ================= -->
@@ -433,8 +432,8 @@
             <div class="brand-profile">
                 <img src="logo.jpg" alt="Logo Al-Bashiroh" class="header-logo">
                 <div class="santri-info">
-                    <h3 id="santri-name-display">Santri Al-Bashiroh</h3>
-                    <p>ID: <span id="santri-id-display">4166854797</span></p>
+                    <h3 id="santri-name-display">-</h3>
+                    <p>ID: <span id="santri-id-display">-</span></p>
                 </div>
             </div>
             <button class="btn-logout" onclick="handleLogout()">Keluar</button>
@@ -467,6 +466,7 @@
                 <div class="filter-item" id="filter-hari-group">
                     <label for="select-hari">Pilih Hari/Waktu</label>
                     <select id="select-hari" onchange="applyFilterMutasi()">
+                        <option value="all">Semua Riwayat</option>
                         <option value="today">Hari Ini</option>
                         <option value="yesterday">Kemarin</option>
                         <option value="7days">7 Hari Terakhir</option>
@@ -474,7 +474,7 @@
                     </select>
                 </div>
 
-                <!-- Input Pilihan Per Tanggal (Selesai-Mulai) -->
+                <!-- Input Pilihan Per Tanggal -->
                 <div class="filter-item" id="filter-tanggal-group" style="display: none;">
                     <label for="start-date">Dari Tanggal</label>
                     <input type="date" id="start-date" />
@@ -502,18 +502,7 @@
                     </thead>
                     <tbody id="mutasi-data">
                         <tr>
-                            <td>16 Sept 2026, 09:15</td>
-                            <td>Jajan Kantin Utama</td>
-                            <td>-</td>
-                            <td style="color: #dc2626; font-weight: 600;">15.000</td>
-                            <td style="font-weight: 600;">85.000</td>
-                        </tr>
-                        <tr>
-                            <td>15 Sept 2026, 16:30</td>
-                            <td>Top Up Via Doku (Wali)</td>
-                            <td style="color: var(--primary); font-weight: 600;">100.000</td>
-                            <td>-</td>
-                            <td style="font-weight: 600;">100.000</td>
+                            <td colspan="5" style="text-align:center; color:#6b7280;">Silakan login untuk menampilkan data mutasi.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -531,10 +520,10 @@
             
             <div class="input-group">
                 <label for="topup-amount">Nominal Top Up (Rp)</label>
-                <input type="number" id="topup-amount" placeholder="Masukkan Nominal (Contoh: 100000)" />
+                <input type="number" id="topup-amount" placeholder="Masukkan Nominal (Contoh: 100000)" min="10000" />
             </div>
 
-            <button class="btn-doku" onclick="processDokuTopup()">Lanjutkan Pembayaran via Doku</button>
+            <button class="btn-doku" id="btn-topup-doku" onclick="processDokuTopup()">Lanjutkan Pembayaran via Doku</button>
         </div>
 
         <!-- PANEL 3: INFO PAKET -->
@@ -556,23 +545,7 @@
                     </thead>
                     <tbody id="paket-data">
                         <tr>
-                            <td>16 Sept 2026</td>
-                            <td>Ibu Wali / J&T Express</td>
-                            <td>Paket Pakaian & Obat-obatan</td>
-                            <td>
-                                <!-- Foto Bukti Terima Paket -->
-                                <img src="logo.jpg" alt="Foto Paket" class="paket-thumb" onclick="openFotoModal(this.src, 'Paket Pakaian & Obat-obatan')">
-                            </td>
-                            <td><span class="badge badge-pending">Di Pos Asrama</span></td>
-                        </tr>
-                        <tr>
-                            <td>12 Sept 2026</td>
-                            <td>Toko Baju / Shopee</td>
-                            <td>Jubah & Kitab Kebersihan</td>
-                            <td>
-                                <img src="logo.jpg" alt="Foto Paket" class="paket-thumb" onclick="openFotoModal(this.src, 'Jubah & Kitab Kebersihan')">
-                            </td>
-                            <td><span class="badge badge-success">Sudah Diambil Santri</span></td>
+                            <td colspan="5" style="text-align:center; color:#6b7280;">Silakan login untuk menampilkan data paket.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -591,99 +564,7 @@
         </div>
     </div>
 
-    <script>
-        // ================= SIMULASI LOGIN & LOGOUT =================
-        function handleLogin() {
-            const idInput = document.getElementById('id-santri-input').value;
-            
-            if(idInput.trim().length >= 3) {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('dashboard-section').style.display = 'block';
-                
-                document.getElementById('santri-id-display').innerText = idInput;
-                document.getElementById('santri-name-display').innerText = "Santri Al-Bashiroh";
-            } else {
-                document.getElementById('login-error').style.display = 'block';
-            }
-        }
-
-        function handleLogout() {
-            document.getElementById('id-santri-input').value = '';
-            document.getElementById('login-error').style.display = 'none';
-            document.getElementById('dashboard-section').style.display = 'none';
-            document.getElementById('login-section').style.display = 'block';
-        }
-
-        // ================= SWITCH TAB =================
-        function switchTab(tabId, evt) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
-
-            evt.currentTarget.classList.add('active');
-            document.getElementById(tabId).classList.add('active');
-        }
-
-        // ================= FILTER MUTASI (PER HARI & PER TANGGAL) =================
-        function toggleFilterMode() {
-            const type = document.getElementById('filter-type').value;
-            const groupHari = document.getElementById('filter-hari-group');
-            const groupStart = document.getElementById('filter-tanggal-group');
-            const groupEnd = document.getElementById('filter-tanggal-end-group');
-
-            if (type === 'hari') {
-                groupHari.style.display = 'flex';
-                groupStart.style.display = 'none';
-                groupEnd.style.display = 'none';
-            } else {
-                groupHari.style.display = 'none';
-                groupStart.style.display = 'flex';
-                groupEnd.style.display = 'flex';
-            }
-        }
-
-        function applyFilterMutasi() {
-            const type = document.getElementById('filter-type').value;
-            if (type === 'hari') {
-                const hari = document.getElementById('select-hari').value;
-                alert('Menampilkan mutasi untuk pilihan: ' + hari);
-            } else {
-                const start = document.getElementById('start-date').value;
-                const end = document.getElementById('end-date').value;
-                if (!start || !end) {
-                    alert('Harap pilih tanggal mulai dan tanggal akhir.');
-                    return;
-                }
-                alert('Menampilkan mutasi dari tanggal ' + start + ' sampai ' + end);
-            }
-            // Disini tempat pemanggilan query Supabase berdasarkan filter yang dipilih
-        }
-
-        // ================= PREVIEW FOTO PAKET =================
-        function openFotoModal(imageSrc, caption) {
-            document.getElementById('modal-image').src = imageSrc;
-            document.getElementById('modal-caption').innerText = "Bukti Paket: " + caption;
-            document.getElementById('foto-modal').style.display = 'flex';
-        }
-
-        function closeFotoModal() {
-            document.getElementById('foto-modal').style.display = 'none';
-        }
-
-        // ================= INTEGRASI DOKU =================
-        function processDokuTopup() {
-            const amount = document.getElementById('topup-amount').value;
-            if (!amount || amount <= 0) {
-                alert("Silakan masukkan nominal top up yang valid.");
-                return;
-            }
-            alert("Mengarahkan ke Gateway Doku untuk pembayaran sebesar Rp " + parseInt(amount).toLocaleString('id-ID'));
-        }
-    </script>
-    <!-- ... batas akhir elemen HTML ... -->
-
-    <!-- Panggil file script.js di sini -->
+    <!-- Panggil file logika JavaScript utama -->
     <script src="script.js"></script>
-</body>
-</html>
 </body>
 </html>
