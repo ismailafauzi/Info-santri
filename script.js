@@ -130,7 +130,7 @@ function applyFilterMutasi() {
     fetchMutasi();
 }
 
-// 3. Fetch Mutasi dari Tabel Log_Transaksi dengan Filter Tanggal Spesifik
+// 3. Fetch Mutasi dari Tabel Log_Transaksi
 async function fetchMutasi() {
     if (!currentSantri) return;
 
@@ -183,7 +183,6 @@ async function fetchMutasi() {
 
     let { data, error } = await query;
 
-    // Fallback jika ID tidak ada hasil dan tanpa filter tanggal
     if ((!data || data.length === 0) && currentSantri.Nama && filterType === 'all') {
         const fallbackRes = await db
             .from('Log_Transaksi')
@@ -287,7 +286,7 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Fungsi Top Up DOKU (Integrasi ke Edge Function doku-checkout)
+// 5. Process Top Up DOKU dengan Header Authorization Supabase
 async function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
@@ -308,7 +307,10 @@ async function processDokuTopup() {
     try {
         const res = await fetch('https://ijipnnhgbzwatdzbdlek.supabase.co/functions/v1/doku-checkout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
             body: JSON.stringify({
                 uid: currentSantri.UID,
                 amount: amount,
@@ -317,14 +319,19 @@ async function processDokuTopup() {
         });
 
         const data = await res.json();
+        console.log('Respon dari Edge Function:', data);
 
-        if (data.response && data.response.payment && data.response.payment.url) {
-            window.location.href = data.response.payment.url;
-        } else if (data.url) {
-            window.location.href = data.url;
+        const redirectUrl = data?.response?.payment?.url 
+                         || data?.payment?.url 
+                         || data?.payment_url 
+                         || data?.url;
+
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
         } else {
             console.error('DOKU Error Response:', data);
-            alert('Gagal memproses pembayaran DOKU.');
+            const errDetail = data?.message || data?.error || JSON.stringify(data);
+            alert('Gagal memproses pembayaran DOKU: ' + errDetail);
         }
     } catch (err) {
         console.error('Error Top Up:', err);
