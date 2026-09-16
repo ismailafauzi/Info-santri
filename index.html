@@ -452,29 +452,24 @@
                 <span>Cek Mutasi Uang Saku</span>
             </div>
 
-            <!-- Filter Per Hari & Per Tanggal -->
+            <!-- Filter Per Hari (Tanggal Spesifik) & Per Rentang Tanggal -->
             <div class="filter-box">
                 <div class="filter-item">
                     <label for="filter-type">Pilih Kategori Filter</label>
                     <select id="filter-type" onchange="toggleFilterMode()">
-                        <option value="hari">Per Hari (Cepat)</option>
+                        <option value="all">Semua Riwayat</option>
+                        <option value="hari">Per Hari (Satu Tanggal)</option>
                         <option value="tanggal">Per Rentang Tanggal</option>
                     </select>
                 </div>
 
-                <!-- Input Pilihan Per Hari -->
-                <div class="filter-item" id="filter-hari-group">
-                    <label for="select-hari">Pilih Hari/Waktu</label>
-                    <select id="select-hari" onchange="applyFilterMutasi()">
-                        <option value="all">Semua Riwayat</option>
-                        <option value="today">Hari Ini</option>
-                        <option value="yesterday">Kemarin</option>
-                        <option value="7days">7 Hari Terakhir</option>
-                        <option value="30days">30 Hari Terakhir</option>
-                    </select>
+                <!-- Input Pilihan Per Hari (Single Date Picker) -->
+                <div class="filter-item" id="filter-hari-group" style="display: none;">
+                    <label for="single-date">Pilih Tanggal</label>
+                    <input type="date" id="single-date" />
                 </div>
 
-                <!-- Input Pilihan Per Tanggal -->
+                <!-- Input Pilihan Per Rentang Tanggal -->
                 <div class="filter-item" id="filter-tanggal-group" style="display: none;">
                     <label for="start-date">Dari Tanggal</label>
                     <input type="date" id="start-date" />
