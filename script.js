@@ -286,7 +286,7 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Process Top Up DOKU dengan Header Authorization Supabase
+// 5. Process Top Up DOKU dengan Debug Raw Response
 async function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
@@ -313,13 +313,23 @@ async function processDokuTopup() {
             },
             body: JSON.stringify({
                 uid: currentSantri.UID,
+                nama: currentSantri.Nama || 'Santri',
                 amount: amount,
                 order_id: orderId
             })
         });
 
-        const data = await res.json();
-        console.log('Respon dari Edge Function:', data);
+        const rawText = await res.text();
+        console.log('HTTP Status:', res.status);
+        console.log('Raw Response:', rawText);
+
+        let data = {};
+        try {
+            data = JSON.parse(rawText);
+        } catch (e) {
+            alert('Respon dari server bukan JSON valid: ' + rawText);
+            return;
+        }
 
         const redirectUrl = data?.response?.payment?.url 
                          || data?.payment?.url 
@@ -329,9 +339,8 @@ async function processDokuTopup() {
         if (redirectUrl) {
             window.location.href = redirectUrl;
         } else {
-            console.error('DOKU Error Response:', data);
-            const errDetail = data?.message || data?.error || JSON.stringify(data);
-            alert('Gagal memproses pembayaran DOKU: ' + errDetail);
+            const errDetail = data?.error || data?.message || rawText || 'Respon kosong';
+            alert(`Gagal memproses pembayaran DOKU (${res.status}): ${errDetail}`);
         }
     } catch (err) {
         console.error('Error Top Up:', err);
