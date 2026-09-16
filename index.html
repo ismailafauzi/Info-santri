@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Wali Santri - Al-Bashiroh</title>
+<!-- Masukkan link rel="icon" base64 Anda dari file sebelumnya di sini -->
+
+<style>
+    :root {
+        --primary: #059669; /* Tema hijau asrama */
+        --primary-hover: #047857;
+        --bg: #f3f4f6;
+        --card: #ffffff;
+        --text: #1f2937;
+        --border: #e5e7eb;
+    }
+    
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+        background-color: var(--bg);
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+    }
+
+    /* --- LOGIN SECTION --- */
+    #login-section {
+        margin-top: 15vh;
+        background: var(--card);
+        padding: 2.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+        height: fit-content;
+    }
+    
+    #login-section h2 { margin-bottom: 1.5rem; color: var(--primary); }
+    
+    input[type="text"], input[type="number"] {
+        width: 100%;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+
+    button {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        width: 100%;
+        font-weight: 600;
+        transition: 0.2s ease;
+    }
+
+    button:hover { background-color: var(--primary-hover); }
+
+    /* --- DASHBOARD SECTION --- */
+    #dashboard-section {
+        display: none;
+        width: 100%;
+        max-width: 800px;
+        margin-top: 2rem;
+    }
+
+    .header-dash {
+        background: var(--card);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tab-container {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+        background-color: var(--card);
+        color: var(--text);
+        border: 1px solid var(--border);
+        width: auto;
+    }
+
+    .tab-btn.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .panel {
+        background: var(--card);
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        display: none;
+    }
+    
+    .panel.active { display: block; }
+
+    /* Table Styles */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+    th, td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+    th { background-color: var(--bg); }
+
+    /* Doku Button specific */
+    .btn-doku {
+        background-color: #E32929; /* Merah identitas Doku */
+        margin-top: 1rem;
+    }
+    .btn-doku:hover { background-color: #C02020; }
+
+</style>
+
+<!-- Supabase JS SDK CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- LOGIN AREA -->
+    <div id="login-section">
+        <h2>Portal Wali Santri</h2>
+        <p style="margin-bottom: 1.5rem; color: #6b7280;">Masukkan ID Santri untuk mengakses informasi asrama.</p>
+        <input type="text" id="id-santri-input" placeholder="Contoh: 10293847" />
+        <button onclick="handleLogin()">Masuk Dashboard</button>
+        <p id="login-error" style="color: red; display: none; margin-top: 1rem; font-size: 0.9rem;">ID Santri tidak ditemukan.</p>
+    </div>
+
+    <!-- DASHBOARD AREA -->
+    <div id="dashboard-section">
+        
+        <div class="header-dash">
+            <div>
+                <h3 id="santri-name-display">Data Santri</h3>
+                <p style="color: #6b7280; font-size: 0.9rem;">ID: <span id="santri-id-display"></span></p>
+            </div>
+            <button onclick="handleLogout()" style="width: auto; background-color: #ef4444;">Keluar</button>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="switchTab('mutasi')">Mutasi Uang Saku</button>
+            <button class="tab-btn" onclick="switchTab('topup')">Top Up Doku</button>
+            <button class="tab-btn" onclick="switchTab('paket')">Info Paket</button>
+        </div>
+
+        <!-- Panel 1: Mutasi -->
+        <div id="mutasi" class="panel active">
+            <h3>Pengecekan Mutasi Uang Saku</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Keterangan</th>
+                        <th>Masuk (Rp)</th>
+                        <th>Keluar (Rp)</th>
+                        <th>Saldo (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody id="mutasi-data">
+                    <!-- Data dari Supabase akan dirender di sini -->
+                    <tr>
+                        <td>16 Sept 2026</td>
+                        <td>Jajan Kantin</td>
+                        <td>-</td>
+                        <td>15.000</td>
+                        <td>85.000</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Panel 2: Top Up -->
+        <div id="topup" class="panel">
+            <h3>Kirim Uang Saku</h3>
+            <p style="margin-bottom: 1rem; color: #6b7280;">Pilih nominal untuk dikirimkan ke rekening uang saku santri.</p>
+            <input type="number" id="topup-amount" placeholder="Nominal Top Up (Contoh: 100000)" />
+            <button class="btn-doku" onclick="processDokuTopup()">Lanjutkan Pembayaran via Doku</button>
+        </div>
+
+        <!-- Panel 3: Info Paket -->
+        <div id="paket" class="panel">
+            <h3>Notifikasi Pengiriman Paket</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tanggal Diterima</th>
+                        <th>Pengirim</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="paket-data">
+                    <!-- Data dari Supabase akan dirender di sini -->
+                    <tr>
+                        <td>14 Sept 2026</td>
+                        <td>Keluarga/Wali</td>
+                        <td><span style="color: green; font-weight: bold;">Sudah Diambil Santri</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        // Konfigurasi Supabase (Silakan isi URL & Key dari dashboard Supabase Anda)
+        /*
+        const supabaseUrl = 'YOUR_SUPABASE_URL';
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        */
+
+        // Fungsi Simulasi Login
+        function handleLogin() {
+            const idInput = document.getElementById('id-santri-input').value;
+            
+            // Validasi sederhana (Nantinya diganti dengan query Supabase: eq('id_santri', idInput))
+            if(idInput.length > 3) { 
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('dashboard-section').style.display = 'block';
+                
+                // Set Header Info
+                document.getElementById('santri-id-display').innerText = idInput;
+                document.getElementById('santri-name-display').innerText = "Santri Al-Bashiroh"; // Ambil dari DB
+                
+                // TODO: Panggil fungsi fetch data mutasi & paket dari supabase di sini
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        // Fungsi Logout
+        function handleLogout() {
+            document.getElementById('id-santri-input').value = '';
+            document.getElementById('login-error').style.display = 'none';
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('login-section').style.display = 'block';
+        }
+
+        // Fungsi Pergantian Tab Dashboard
+        function switchTab(tabId) {
+            // Hapus class active dari semua tombol dan panel
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+
+            // Set active class ke elemen yang dipilih
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Fungsi integrasi Gateway Doku
+        function processDokuTopup() {
+            const amount = document.getElementById('topup-amount').value;
+            if(!amount || amount <= 0) {
+                alert("Silakan masukkan nominal yang valid.");
+                return;
+            }
+            // TODO: Kirim data invoice ke API backend untuk memproses URL Redirect Doku
+            alert("Memproses top up senilai Rp" + amount + ". Mengalihkan ke halaman pembayaran Doku...");
+        }
+    </script>
+</body>
+</html>
