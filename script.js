@@ -7,6 +7,13 @@ const db = window.supabaseApp;
 
 let currentSantri = null;
 
+// Set default tanggal hari ini pada input date saat halaman dimuat
+document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date().toISOString().split('T')[0];
+    const singleDateEl = document.getElementById('single-date');
+    if (singleDateEl) singleDateEl.value = today;
+});
+
 // 1. Fungsi Login
 async function handleLogin() {
     const idInput = document.getElementById('id-santri-input').value.trim();
@@ -44,7 +51,6 @@ async function handleLogin() {
             return;
         }
 
-        // Simpan data santri yang sedang login
         currentSantri = santri;
         document.getElementById('santri-id-display').innerText = santri.UID;
         document.getElementById('santri-name-display').innerText = santri.Nama || 'Santri Al-Bashiroh';
@@ -81,57 +87,86 @@ function switchTab(tabId, evt) {
     document.getElementById(tabId).classList.add('active');
 }
 
-// 2. Fetch Mutasi dari Tabel Log_Transaksi
+// 2. Toggle Tampilan Mode Filter
+function toggleFilterMode() {
+    const type = document.getElementById('filter-type').value;
+    const groupHari = document.getElementById('filter-hari-group');
+    const groupStart = document.getElementById('filter-tanggal-group');
+    const groupEnd = document.getElementById('filter-tanggal-end-group');
+
+    if (type === 'hari') {
+        groupHari.style.display = 'flex';
+        groupStart.style.display = 'none';
+        groupEnd.style.display = 'none';
+    } else if (type === 'tanggal') {
+        groupHari.style.display = 'none';
+        groupStart.style.display = 'flex';
+        groupEnd.style.display = 'flex';
+    } else {
+        groupHari.style.display = 'none';
+        groupStart.style.display = 'none';
+        groupEnd.style.display = 'none';
+    }
+}
+
+function applyFilterMutasi() {
+    fetchMutasi();
+}
+
+// 3. Fetch Mutasi dari Tabel Log_Transaksi dengan Filter Tanggal Spesifik
 async function fetchMutasi() {
     if (!currentSantri) return;
 
     const tbody = document.getElementById('mutasi-data');
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data transaksi...</td></tr>';
 
-    // Query ke Log_Transaksi menggunakan ID santri
     let query = db
         .from('Log_Transaksi')
         .select('*')
-        .eq('ID', currentSantri.ID);
+        .eq('ID', currentSantri.ID)
+        .order('Waktu', { ascending: false });
 
     const filterType = document.getElementById('filter-type').value;
 
     if (filterType === 'hari') {
-        const val = document.getElementById('select-hari').value;
-        const now = new Date();
-        
-        if (val === 'today') {
-            const todayStr = now.toISOString().split('T')[0];
-            query = query.gte('Waktu', todayStr);
-        } else if (val === 'yesterday') {
-            const yest = new Date(now);
-            yest.setDate(yest.getDate() - 1);
-            query = query.gte('Waktu', yest.toISOString().split('T')[0]);
-        } else if (val === '7days') {
-            const d7 = new Date(now);
-            d7.setDate(d7.getDate() - 7);
-            query = query.gte('Waktu', d7.toISOString().split('T')[0]);
-        } else if (val === '30days') {
-            const d30 = new Date(now);
-            d30.setDate(d30.getDate() - 30);
-            query = query.gte('Waktu', d30.toISOString().split('T')[0]);
+        const singleDate = document.getElementById('single-date').value;
+        if (singleDate) {
+            query = query
+                .gte('Waktu', `${singleDate}T00:00:00`)
+                .lte('Waktu', `${singleDate}T23:59:59`);
+        } else {
+            alert('Silakan pilih tanggal terlebih dahulu.');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Pilih tanggal filter.</td></tr>';
+            return;
         }
-    } else {
+    } else if (filterType === 'tanggal') {
         const start = document.getElementById('start-date').value;
         const end = document.getElementById('end-date').value;
 
-        if (start) query = query.gte('Waktu', start);
-        if (end) query = query.lte('Waktu', end + 'T23:59:59');
+        if (start && end) {
+            query = query
+                .gte('Waktu', `${start}T00:00:00`)
+                .lte('Waktu', `${end}T23:59:59`);
+        } else if (start) {
+            query = query.gte('Waktu', `${start}T00:00:00`);
+        } else if (end) {
+            query = query.lte('Waktu', `${end}T23:59:59`);
+        } else {
+            alert('Silakan isi rentang tanggal.');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Pilih rentang tanggal.</td></tr>';
+            return;
+        }
     }
 
     let { data, error } = await query;
 
-    // Fallback jika ID tidak cocok, cari berdasarkan Nama
-    if ((!data || data.length === 0) && currentSantri.Nama) {
+    // Fallback jika ID tidak ada hasil dan tanpa filter tanggal
+    if ((!data || data.length === 0) && currentSantri.Nama && filterType === 'all') {
         const fallbackRes = await db
             .from('Log_Transaksi')
             .select('*')
-            .eq('Nama', currentSantri.Nama);
+            .eq('Nama', currentSantri.Nama)
+            .order('Waktu', { ascending: false });
         if (fallbackRes.data && fallbackRes.data.length > 0) {
             data = fallbackRes.data;
             error = null;
@@ -145,7 +180,7 @@ async function fetchMutasi() {
     }
 
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Tidak ada riwayat transaksi.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Tidak ada riwayat transaksi pada tanggal/periode ini.</td></tr>';
         return;
     }
 
@@ -170,18 +205,7 @@ async function fetchMutasi() {
     }).join('');
 }
 
-function toggleFilterMode() {
-    const type = document.getElementById('filter-type').value;
-    document.getElementById('filter-hari-group').style.display = type === 'hari' ? 'flex' : 'none';
-    document.getElementById('filter-tanggal-group').style.display = type === 'tanggal' ? 'flex' : 'none';
-    document.getElementById('filter-tanggal-end-group').style.display = type === 'tanggal' ? 'flex' : 'none';
-}
-
-function applyFilterMutasi() {
-    fetchMutasi();
-}
-
-// 3. Fetch Paket dari Tabel paket_santri
+// 4. Fetch Paket dari Tabel paket_santri
 async function fetchPaket() {
     if (!currentSantri) return;
 
