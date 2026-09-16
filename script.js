@@ -1,4 +1,4 @@
-// 1. Inisialisasi Supabase (Ganti pake kredensial Supabase kamu)
+// 1. Inisialisasi Supabase
 const SUPABASE_URL = "https://ijipnnhgbzwatdzbdlek.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaXBubmhnYnp3YXRkemJkbGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMjc3NDIsImV4cCI6MjEwMzkwMzc0Mn0.TviHZ5O25ZSif9DawhcywKD9c3d4bv3yGnLPGk6iMAU";
 
@@ -6,7 +6,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentSantriId = null;
 
-// 2. Fungsi Login & Cek ID ke Database Supabase
+// 2. Fungsi Login & Cek ID Santri ke Supabase
 async function handleLogin() {
     const idInput = document.getElementById('id-santri-input').value.trim();
     const errorEl = document.getElementById('login-error');
@@ -18,7 +18,7 @@ async function handleLogin() {
         return;
     }
 
-    // Cek tabel 'santri' di Supabase
+    // Query ke tabel 'santri'
     const { data: santri, error } = await supabase
         .from('santri')
         .select('*')
@@ -26,20 +26,20 @@ async function handleLogin() {
         .single();
 
     if (error || !santri) {
-        errorEl.innerText = 'ID Santri nggak ditemukan di database.';
+        errorEl.innerText = 'ID Santri tidak ditemukan di database.';
         errorEl.style.display = 'block';
         return;
     }
 
-    // Jika ID ketemu
+    // ID Ditemukan
     currentSantriId = santri.id_santri;
     document.getElementById('santri-id-display').innerText = santri.id_santri;
-    document.getElementById('santri-name-display').innerText = santri.nama_santri;
+    document.getElementById('santri-name-display').innerText = santri.nama_santri || 'Santri';
 
     document.getElementById('login-section').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'block';
 
-    // Fetch data otomatis setelah login
+    // Ambil data langsung dari Supabase
     fetchMutasi();
     fetchPaket();
 }
@@ -60,12 +60,12 @@ function switchTab(tabId, evt) {
     document.getElementById(tabId).classList.add('active');
 }
 
-// 3. Narik Data Mutasi dari Supabase dengan Filter
+// 3. Narik Data Mutasi dari Supabase (Live Query)
 async function fetchMutasi() {
     if (!currentSantriId) return;
 
     const tbody = document.getElementById('mutasi-data');
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading data mutasi...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data mutasi dari server...</td></tr>';
 
     let query = supabase
         .from('mutasi_uang_saku')
@@ -105,18 +105,24 @@ async function fetchMutasi() {
 
     const { data, error } = await query;
 
-    if (error || !data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280;">Tidak ada catatan mutasi.</td></tr>';
+    if (error) {
+        console.error('Error fetching mutasi:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626;">Gagal memuat data mutasi. Gagal terhubung ke database.</td></tr>';
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Tidak ada catatan mutasi untuk periode ini.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map(item => `
         <tr>
-            <td>${new Date(item.tanggal).toLocaleString('id-ID')}</td>
-            <td>${item.keterangan}</td>
-            <td style="color: var(--primary); font-weight: 600;">${item.masuk ? item.masuk.toLocaleString('id-ID') : '-'}</td>
-            <td style="color: #dc2626; font-weight: 600;">${item.keluar ? item.keluar.toLocaleString('id-ID') : '-'}</td>
-            <td style="font-weight: 600;">${item.saldo_akhir ? item.saldo_akhir.toLocaleString('id-ID') : '0'}</td>
+            <td>${item.tanggal ? new Date(item.tanggal).toLocaleString('id-ID') : '-'}</td>
+            <td>${item.keterangan || '-'}</td>
+            <td style="color: var(--primary); font-weight: 600;">${item.masuk ? Number(item.masuk).toLocaleString('id-ID') : '-'}</td>
+            <td style="color: #dc2626; font-weight: 600;">${item.keluar ? Number(item.keluar).toLocaleString('id-ID') : '-'}</td>
+            <td style="font-weight: 600;">${item.saldo_akhir ? Number(item.saldo_akhir).toLocaleString('id-ID') : '0'}</td>
         </tr>
     `).join('');
 }
@@ -132,12 +138,12 @@ function applyFilterMutasi() {
     fetchMutasi();
 }
 
-// 4. Narik Data Info Paket dari Supabase
+// 4. Narik Data Info Paket dari Supabase (Live Query)
 async function fetchPaket() {
     if (!currentSantriId) return;
 
     const tbody = document.getElementById('paket-data');
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading data paket...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data paket dari server...</td></tr>';
 
     const { data, error } = await supabase
         .from('paket_santri')
@@ -145,31 +151,38 @@ async function fetchPaket() {
         .eq('id_santri', currentSantriId)
         .order('tanggal_tiba', { ascending: false });
 
-    if (error || !data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280;">Belum ada paket masuk.</td></tr>';
+    if (error) {
+        console.error('Error fetching paket:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626;">Gagal memuat data paket.</td></tr>';
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Belum ada riwayat paket masuk.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map(p => {
-        const isSuccess = p.status.toLowerCase().includes('sudah') || p.status.toLowerCase().includes('diambil');
+        const statusText = p.status || 'Di Pos Asrama';
+        const isSuccess = statusText.toLowerCase().includes('sudah') || statusText.toLowerCase().includes('diambil');
         const badgeClass = isSuccess ? 'badge-success' : 'badge-pending';
         const imgUrl = p.foto_url || 'logo.jpg';
 
         return `
             <tr>
-                <td>${new Date(p.tanggal_tiba).toLocaleDateString('id-ID')}</td>
-                <td>${p.pengirim}</td>
-                <td>${p.deskripsi}</td>
+                <td>${p.tanggal_tiba ? new Date(p.tanggal_tiba).toLocaleDateString('id-ID') : '-'}</td>
+                <td>${p.pengirim || '-'}</td>
+                <td>${p.deskripsi || '-'}</td>
                 <td>
-                    <img src="${imgUrl}" alt="Foto Paket" class="paket-thumb" onclick="openFotoModal('${imgUrl}', '${p.deskripsi}')">
+                    <img src="${imgUrl}" alt="Foto Paket" class="paket-thumb" onclick="openFotoModal('${imgUrl}', '${p.deskripsi || 'Paket'}')">
                 </td>
-                <td><span class="badge ${badgeClass}">${p.status}</span></td>
+                <td><span class="badge ${badgeClass}">${statusText}</span></td>
             </tr>
         `;
     }).join('');
 }
 
-// Modal Foto & Doku TopUp
+// Modal Foto
 function openFotoModal(imageSrc, caption) {
     document.getElementById('modal-image').src = imageSrc;
     document.getElementById('modal-caption').innerText = "Bukti Paket: " + caption;
@@ -180,11 +193,51 @@ function closeFotoModal() {
     document.getElementById('foto-modal').style.display = 'none';
 }
 
-function processDokuTopup() {
-    const amount = document.getElementById('topup-amount').value;
-    if (!amount || amount <= 0) {
-        alert("Silakan masukkan nominal top up yang valid.");
+// 5. Integrasi Pembayaran via DOKU Payment Gateway
+async function processDokuTopup() {
+    const amountInput = document.getElementById('topup-amount');
+    const amount = parseInt(amountInput.value);
+    const btn = document.getElementById('btn-topup-doku');
+
+    if (!amount || amount < 10000) {
+        alert("Minimum top up adalah Rp 10.000");
         return;
     }
-    alert("Mengarahkan ke Gateway Doku untuk pembayaran sebesar Rp " + parseInt(amount).toLocaleString('id-ID'));
+
+    if (!currentSantriId) {
+        alert("Sesi login telah berakhir. Silakan login kembali.");
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.innerText = "Memproses Pembayaran DOKU...";
+
+        // Panggil Supabase Edge Function untuk memproses DOKU Checkout URL
+        // (Sangat direkomendasikan agar DOKU Client ID & Secret Key tidak bocor di frontend)
+        const { data, error } = await supabase.functions.invoke('doku-checkout', {
+            body: {
+                id_santri: currentSantriId,
+                amount: amount,
+                order_id: "TOPUP-" + currentSantriId + "-" + Date.now()
+            }
+        });
+
+        if (error || !data || !data.payment_url) {
+            // Fallback jika Edge Function belum dideploy:
+            console.warn('Edge Function doku-checkout belum siap atau error:', error);
+            alert(`Sistem Top Up DOKU sebesar Rp ${amount.toLocaleString('id-ID')} siap dikoneksikan ke DOKU Checkout URL.`);
+            return;
+        }
+
+        // Redirect wali santri ke halaman checkout resmi DOKU (Virtual Account / QRIS / e-Wallet)
+        window.location.href = data.payment_url;
+
+    } catch (err) {
+        console.error('DOKU Top Up Error:', err);
+        alert("Terjadi kesalahan saat memproses pembayaran. Coba lagi nanti.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Lanjutkan Pembayaran via Doku";
+    }
 }
