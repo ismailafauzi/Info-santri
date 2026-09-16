@@ -2,11 +2,10 @@
 const SUPABASE_URL = "https://ijipnnhgbzwatdzbdlek.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaXBubmhnYnp3YXRkemJkbGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMjc3NDIsImV4cCI6MjEwMzkwMzc0Mn0.TviHZ5O25ZSif9DawhcywKD9c3d4bv3yGnLPGk6iMAU";
 
-// Gunakan variabel db agar tidak terjadi SyntaxError collision
 window.supabaseApp = window.supabaseApp || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const db = window.supabaseApp;
 
-let currentSantriUID = null;
+let currentSantri = null;
 
 // 1. Fungsi Login
 async function handleLogin() {
@@ -45,8 +44,8 @@ async function handleLogin() {
             return;
         }
 
-        // Login Berhasil
-        currentSantriUID = santri.UID;
+        // Simpan data santri yang sedang login
+        currentSantri = santri;
         document.getElementById('santri-id-display').innerText = santri.UID;
         document.getElementById('santri-name-display').innerText = santri.Nama || 'Santri Al-Bashiroh';
 
@@ -67,7 +66,7 @@ async function handleLogin() {
 }
 
 function handleLogout() {
-    currentSantriUID = null;
+    currentSantri = null;
     document.getElementById('id-santri-input').value = '';
     document.getElementById('login-error').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'none';
@@ -84,15 +83,16 @@ function switchTab(tabId, evt) {
 
 // 2. Fetch Mutasi dari Tabel Log_Transaksi
 async function fetchMutasi() {
-    if (!currentSantriUID) return;
+    if (!currentSantri) return;
 
     const tbody = document.getElementById('mutasi-data');
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data transaksi...</td></tr>';
 
+    // Query ke Log_Transaksi menggunakan ID santri
     let query = db
         .from('Log_Transaksi')
         .select('*')
-        .eq('UID', currentSantriUID);
+        .eq('ID', currentSantri.ID);
 
     const filterType = document.getElementById('filter-type').value;
 
@@ -102,29 +102,41 @@ async function fetchMutasi() {
         
         if (val === 'today') {
             const todayStr = now.toISOString().split('T')[0];
-            query = query.gte('created_at', todayStr);
+            query = query.gte('Waktu', todayStr);
         } else if (val === 'yesterday') {
             const yest = new Date(now);
             yest.setDate(yest.getDate() - 1);
-            query = query.gte('created_at', yest.toISOString().split('T')[0]);
+            query = query.gte('Waktu', yest.toISOString().split('T')[0]);
         } else if (val === '7days') {
             const d7 = new Date(now);
             d7.setDate(d7.getDate() - 7);
-            query = query.gte('created_at', d7.toISOString().split('T')[0]);
+            query = query.gte('Waktu', d7.toISOString().split('T')[0]);
         } else if (val === '30days') {
             const d30 = new Date(now);
             d30.setDate(d30.getDate() - 30);
-            query = query.gte('created_at', d30.toISOString().split('T')[0]);
+            query = query.gte('Waktu', d30.toISOString().split('T')[0]);
         }
     } else {
         const start = document.getElementById('start-date').value;
         const end = document.getElementById('end-date').value;
 
-        if (start) query = query.gte('created_at', start);
-        if (end) query = query.lte('created_at', end + 'T23:59:59');
+        if (start) query = query.gte('Waktu', start);
+        if (end) query = query.lte('Waktu', end + 'T23:59:59');
     }
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+
+    // Fallback jika ID tidak cocok, cari berdasarkan Nama
+    if ((!data || data.length === 0) && currentSantri.Nama) {
+        const fallbackRes = await db
+            .from('Log_Transaksi')
+            .select('*')
+            .eq('Nama', currentSantri.Nama);
+        if (fallbackRes.data && fallbackRes.data.length > 0) {
+            data = fallbackRes.data;
+            error = null;
+        }
+    }
 
     if (error) {
         console.error('Error fetching mutasi:', error);
@@ -137,15 +149,25 @@ async function fetchMutasi() {
         return;
     }
 
-    tbody.innerHTML = data.map(item => `
-        <tr>
-            <td>${item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-'}</td>
-            <td>${item.Keterangan || item.keterangan || 'Transaksi Kantin/Saku'}</td>
-            <td style="color: var(--primary); font-weight: 600;">${item.masuk ? Number(item.masuk).toLocaleString('id-ID') : '-'}</td>
-            <td style="color: #dc2626; font-weight: 600;">${item.keluar ? Number(item.keluar).toLocaleString('id-ID') : '-'}</td>
-            <td style="font-weight: 600;">${item.saldo_akhir ? Number(item.saldo_akhir).toLocaleString('id-ID') : '-'}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = data.map(item => {
+        const statusText = item.Status || 'Transaksi';
+        const isJajan = statusText.toLowerCase().includes('jajan') || statusText.toLowerCase().includes('keluar');
+        const nominal = item.Nominal ? Number(item.Nominal).toLocaleString('id-ID') : '0';
+        
+        const masuk = isJajan ? '-' : nominal;
+        const keluar = isJajan ? nominal : '-';
+        const waktu = item.Waktu_WIB || item.Waktu || item.created_at;
+
+        return `
+            <tr>
+                <td>${waktu ? new Date(waktu).toLocaleString('id-ID') : '-'}</td>
+                <td>${statusText}</td>
+                <td style="color: var(--primary); font-weight: 600;">${masuk}</td>
+                <td style="color: #dc2626; font-weight: 600;">${keluar}</td>
+                <td style="font-weight: 600;">-</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function toggleFilterMode() {
@@ -161,7 +183,7 @@ function applyFilterMutasi() {
 
 // 3. Fetch Paket dari Tabel paket_santri
 async function fetchPaket() {
-    if (!currentSantriUID) return;
+    if (!currentSantri) return;
 
     const tbody = document.getElementById('paket-data');
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data paket...</td></tr>';
@@ -169,7 +191,7 @@ async function fetchPaket() {
     const { data, error } = await db
         .from('paket_santri')
         .select('*')
-        .eq('UID', currentSantriUID);
+        .eq('UID', currentSantri.UID);
 
     if (error) {
         console.error('Error fetching paket:', error);
@@ -218,5 +240,5 @@ function processDokuTopup() {
         alert("Nominal minimal top up adalah Rp 10.000");
         return;
     }
-    alert("Proses Top Up DOKU sebesar Rp " + Number(amount).toLocaleString('id-ID') + " untuk UID: " + currentSantriUID);
+    alert("Proses Top Up DOKU sebesar Rp " + Number(amount).toLocaleString('id-ID') + " untuk UID: " + (currentSantri ? currentSantri.UID : '-'));
 }
