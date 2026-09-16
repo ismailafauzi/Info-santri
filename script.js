@@ -1,12 +1,14 @@
-// Inisialisasi Supabase
+// Inisialisasi Supabase Client
 const SUPABASE_URL = "https://ijipnnhgbzwatdzbdlek.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaXBubmhnYnp3YXRkemJkbGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMjc3NDIsImV4cCI6MjEwMzkwMzc0Mn0.TviHZ5O25ZSif9DawhcywKD9c3d4bv3yGnLPGk6iMAU";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Gunakan variabel db agar tidak terjadi SyntaxError collision
+window.supabaseApp = window.supabaseApp || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabaseApp;
 
 let currentSantriUID = null;
 
-// 1. Login menggunakan Tabel 'Data_Santri' & Kolom 'UID'
+// 1. Fungsi Login
 async function handleLogin() {
     const idInput = document.getElementById('id-santri-input').value.trim();
     const errorEl = document.getElementById('login-error');
@@ -24,8 +26,7 @@ async function handleLogin() {
         btn.innerText = "Memeriksa...";
         btn.disabled = true;
 
-        // Query ke tabel Data_Santri berdasarkan kolom UID
-        const { data: santri, error } = await supabase
+        const { data: santri, error } = await db
             .from('Data_Santri')
             .select('*')
             .eq('UID', idInput)
@@ -81,14 +82,14 @@ function switchTab(tabId, evt) {
     document.getElementById(tabId).classList.add('active');
 }
 
-// 2. Fetch Mutasi dari Tabel 'Log_Transaksi'
+// 2. Fetch Mutasi dari Tabel Log_Transaksi
 async function fetchMutasi() {
     if (!currentSantriUID) return;
 
     const tbody = document.getElementById('mutasi-data');
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data transaksi...</td></tr>';
 
-    let query = supabase
+    let query = db
         .from('Log_Transaksi')
         .select('*')
         .eq('UID', currentSantriUID);
@@ -158,14 +159,14 @@ function applyFilterMutasi() {
     fetchMutasi();
 }
 
-// 3. Fetch Paket dari Tabel 'paket_santri'
+// 3. Fetch Paket dari Tabel paket_santri
 async function fetchPaket() {
     if (!currentSantriUID) return;
 
     const tbody = document.getElementById('paket-data');
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data paket...</td></tr>';
 
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('paket_santri')
         .select('*')
         .eq('UID', currentSantriUID);
@@ -201,7 +202,6 @@ async function fetchPaket() {
     }).join('');
 }
 
-// Modal Foto
 function openFotoModal(imageSrc, caption) {
     document.getElementById('modal-image').src = imageSrc;
     document.getElementById('modal-caption').innerText = "Bukti Paket: " + caption;
@@ -212,7 +212,6 @@ function closeFotoModal() {
     document.getElementById('foto-modal').style.display = 'none';
 }
 
-// Top Up Doku
 function processDokuTopup() {
     const amount = document.getElementById('topup-amount').value;
     if (!amount || amount < 10000) {
