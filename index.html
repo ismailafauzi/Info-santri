@@ -1,262 +1,612 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portal Wali Santri - Al-Bashiroh</title>
-<!-- Masukkan link rel="icon" base64 Anda dari file sebelumnya di sini -->
-
-<style>
-    :root {
-        --primary: #059669; /* Tema hijau asrama */
-        --primary-hover: #047857;
-        --bg: #f3f4f6;
-        --card: #ffffff;
-        --text: #1f2937;
-        --border: #e5e7eb;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Wali Santri - Ma'had Al-Bashiroh</title>
     
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    <!-- Favicon / Icon Page -->
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
 
-    body {
-        background-color: var(--bg);
-        color: var(--text);
-        display: flex;
-        justify-content: center;
-        min-height: 100vh;
-    }
+    <style>
+        :root {
+            --primary: #059669;        /* Hijau utama */
+            --primary-hover: #047857;  /* Hijau gelap hover */
+            --primary-light: #d1fae5;  /* Hijau aksen */
+            --bg: #f0fdf4;             /* Background Hijau Muda Lembut */
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --shadow-sm: 0 4px 6px -1px rgba(5, 150, 105, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        }
 
-    /* --- LOGIN SECTION --- */
-    #login-section {
-        margin-top: 15vh;
-        background: var(--card);
-        padding: 2.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        width: 100%;
-        max-width: 400px;
-        text-align: center;
-        height: fit-content;
-    }
-    
-    #login-section h2 { margin-bottom: 1.5rem; color: var(--primary); }
-    
-    input[type="text"], input[type="number"] {
-        width: 100%;
-        padding: 0.75rem;
-        margin-bottom: 1rem;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        font-size: 1rem;
-    }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+        }
 
-    button {
-        background-color: var(--primary);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        cursor: pointer;
-        width: 100%;
-        font-weight: 600;
-        transition: 0.2s ease;
-    }
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 1.5rem 1rem;
+        }
 
-    button:hover { background-color: var(--primary-hover); }
+        /* --- LOGIN SECTION --- */
+        #login-section {
+            margin-top: 8vh;
+            background: var(--card-bg);
+            padding: 2.5rem 2rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            border: 1px solid rgba(5, 150, 105, 0.1);
+            transition: transform 0.3s ease;
+        }
 
-    /* --- DASHBOARD SECTION --- */
-    #dashboard-section {
-        display: none;
-        width: 100%;
-        max-width: 800px;
-        margin-top: 2rem;
-    }
+        .logo-login {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08));
+        }
 
-    .header-dash {
-        background: var(--card);
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        margin-bottom: 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+        #login-section h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
 
-    .tab-container {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
+        #login-section p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1.8rem;
+        }
 
-    .tab-btn {
-        background-color: var(--card);
-        color: var(--text);
-        border: 1px solid var(--border);
-        width: auto;
-    }
+        .input-group {
+            text-align: left;
+            margin-bottom: 1.2rem;
+        }
 
-    .tab-btn.active {
-        background-color: var(--primary);
-        color: white;
-        border-color: var(--primary);
-    }
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.4rem;
+        }
 
-    .panel {
-        background: var(--card);
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        display: none;
-    }
-    
-    .panel.active { display: block; }
+        input[type="text"], input[type="number"], input[type="date"], select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+            background-color: #fafafa;
+        }
 
-    /* Table Styles */
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 1rem;
-    }
-    th, td {
-        padding: 0.75rem;
-        text-align: left;
-        border-bottom: 1px solid var(--border);
-    }
-    th { background-color: var(--bg); }
+        input:focus, select:focus {
+            border-color: var(--primary);
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+        }
 
-    /* Doku Button specific */
-    .btn-doku {
-        background-color: #E32929; /* Merah identitas Doku */
-        margin-top: 1rem;
-    }
-    .btn-doku:hover { background-color: #C02020; }
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.85rem 1.5rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+            transition: all 0.2s ease;
+        }
 
-</style>
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(5, 150, 105, 0.4);
+        }
 
-<!-- Supabase JS SDK CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        /* --- DASHBOARD SECTION --- */
+        #dashboard-section {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header-dash {
+            background: var(--card-bg);
+            padding: 1.2rem 1.8rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(5, 150, 105, 0.1);
+        }
+
+        .brand-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-logo {
+            width: 55px;
+            height: 55px;
+            object-fit: contain;
+        }
+
+        .santri-info h3 {
+            color: var(--text-main);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .santri-info p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .btn-logout {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(239, 68, 68, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .btn-logout:hover {
+            background-color: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        /* TAB NAVIGATION */
+        .tab-container {
+            display: flex;
+            gap: 0.8rem;
+            margin-bottom: 1.2rem;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .tab-btn {
+            background-color: var(--card-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary-light);
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+        }
+
+        /* PANEL CARD */
+        .panel {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            display: none;
+            border: 1px solid rgba(5, 150, 105, 0.08);
+        }
+
+        .panel.active { display: block; }
+
+        .panel-title {
+            color: var(--primary);
+            font-size: 1.25rem;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* FILTER MUTASI STYLES */
+        .filter-box {
+            background-color: #f8fafc;
+            border: 1px solid var(--border);
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-item label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* TABLE STYLES */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 0.5rem;
+        }
+
+        th, td {
+            padding: 0.9rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        /* FOTO PAKET THUMBNAIL */
+        .paket-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: transform 0.2s ease;
+        }
+
+        .paket-thumb:hover {
+            transform: scale(1.08);
+        }
+
+        /* BADGE STATUS */
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        /* BUTTON DOKU */
+        .btn-doku {
+            background-color: #E32929;
+            color: white;
+            border: none;
+            padding: 0.85rem 1.5rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(227, 41, 41, 0.3);
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+        }
+
+        .btn-doku:hover {
+            background-color: #c02020;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(227, 41, 41, 0.4);
+        }
+
+        /* MODAL PREVIEW FOTO */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.75);
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-content img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+        }
+    </style>
+
+    <!-- Supabase SDK CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <!-- LOGIN AREA -->
+    <!-- ================= HALAMAN LOGIN ================= -->
     <div id="login-section">
+        <!-- Logo Ma'had Al-Bashiroh -->
+        <img src="logo.jpg" alt="Logo Ma'had Al-Bashiroh" class="logo-login">
         <h2>Portal Wali Santri</h2>
-        <p style="margin-bottom: 1.5rem; color: #6b7280;">Masukkan ID Santri untuk mengakses informasi asrama.</p>
-        <input type="text" id="id-santri-input" placeholder="Contoh: 10293847" />
-        <button onclick="handleLogin()">Masuk Dashboard</button>
-        <p id="login-error" style="color: red; display: none; margin-top: 1rem; font-size: 0.9rem;">ID Santri tidak ditemukan.</p>
+        <p>Masukkan ID Santri untuk mengakses informasi dan administrasi asrama.</p>
+        
+        <div class="input-group">
+            <label for="id-santri-input">ID Santri</label>
+            <input type="text" id="id-santri-input" placeholder="Masukkan ID (Contoh: 4166854797)" />
+        </div>
+
+        <button class="btn-primary" onclick="handleLogin()">Masuk Dashboard</button>
+        <p id="login-error" style="color: #dc2626; display: none; margin-top: 1rem; font-weight: 500;">ID Santri tidak ditemukan.</p>
     </div>
 
-    <!-- DASHBOARD AREA -->
+    <!-- ================= HALAMAN DASHBOARD ================= -->
     <div id="dashboard-section">
         
+        <!-- Header Profile -->
         <div class="header-dash">
-            <div>
-                <h3 id="santri-name-display">Data Santri</h3>
-                <p style="color: #6b7280; font-size: 0.9rem;">ID: <span id="santri-id-display"></span></p>
+            <div class="brand-profile">
+                <img src="logo.jpg" alt="Logo Al-Bashiroh" class="header-logo">
+                <div class="santri-info">
+                    <h3 id="santri-name-display">Santri Al-Bashiroh</h3>
+                    <p>ID: <span id="santri-id-display">4166854797</span></p>
+                </div>
             </div>
-            <button onclick="handleLogout()" style="width: auto; background-color: #ef4444;">Keluar</button>
+            <button class="btn-logout" onclick="handleLogout()">Keluar</button>
         </div>
 
+        <!-- Tab Navigation -->
         <div class="tab-container">
-            <button class="tab-btn active" onclick="switchTab('mutasi')">Mutasi Uang Saku</button>
-            <button class="tab-btn" onclick="switchTab('topup')">Top Up Doku</button>
-            <button class="tab-btn" onclick="switchTab('paket')">Info Paket</button>
+            <button class="tab-btn active" onclick="switchTab('mutasi', event)">Mutasi Uang Saku</button>
+            <button class="tab-btn" onclick="switchTab('topup', event)">Top Up Doku</button>
+            <button class="tab-btn" onclick="switchTab('paket', event)">Info Paket & Barang</button>
         </div>
 
-        <!-- Panel 1: Mutasi -->
+        <!-- PANEL 1: MUTASI UANG SAKU -->
         <div id="mutasi" class="panel active">
-            <h3>Pengecekan Mutasi Uang Saku</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>Keterangan</th>
-                        <th>Masuk (Rp)</th>
-                        <th>Keluar (Rp)</th>
-                        <th>Saldo (Rp)</th>
-                    </tr>
-                </thead>
-                <tbody id="mutasi-data">
-                    <!-- Data dari Supabase akan dirender di sini -->
-                    <tr>
-                        <td>16 Sept 2026</td>
-                        <td>Jajan Kantin</td>
-                        <td>-</td>
-                        <td>15.000</td>
-                        <td>85.000</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="panel-title">
+                <span>Cek Mutasi Uang Saku</span>
+            </div>
+
+            <!-- Filter Per Hari & Per Tanggal -->
+            <div class="filter-box">
+                <div class="filter-item">
+                    <label for="filter-type">Pilih Kategori Filter</label>
+                    <select id="filter-type" onchange="toggleFilterMode()">
+                        <option value="hari">Per Hari (Cepat)</option>
+                        <option value="tanggal">Per Rentang Tanggal</option>
+                    </select>
+                </div>
+
+                <!-- Input Pilihan Per Hari -->
+                <div class="filter-item" id="filter-hari-group">
+                    <label for="select-hari">Pilih Hari/Waktu</label>
+                    <select id="select-hari" onchange="applyFilterMutasi()">
+                        <option value="today">Hari Ini</option>
+                        <option value="yesterday">Kemarin</option>
+                        <option value="7days">7 Hari Terakhir</option>
+                        <option value="30days">30 Hari Terakhir</option>
+                    </select>
+                </div>
+
+                <!-- Input Pilihan Per Tanggal (Selesai-Mulai) -->
+                <div class="filter-item" id="filter-tanggal-group" style="display: none;">
+                    <label for="start-date">Dari Tanggal</label>
+                    <input type="date" id="start-date" />
+                </div>
+                <div class="filter-item" id="filter-tanggal-end-group" style="display: none;">
+                    <label for="end-date">Sampai Tanggal</label>
+                    <input type="date" id="end-date" />
+                </div>
+
+                <div class="filter-item" style="flex: 0 0 auto;">
+                    <button class="btn-primary" style="padding: 0.75rem 1rem;" onclick="applyFilterMutasi()">Terapkan Filter</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tanggal & Waktu</th>
+                            <th>Keterangan Transaksi</th>
+                            <th>Masuk (Rp)</th>
+                            <th>Keluar (Rp)</th>
+                            <th>Sisa Saldo (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mutasi-data">
+                        <tr>
+                            <td>16 Sept 2026, 09:15</td>
+                            <td>Jajan Kantin Utama</td>
+                            <td>-</td>
+                            <td style="color: #dc2626; font-weight: 600;">15.000</td>
+                            <td style="font-weight: 600;">85.000</td>
+                        </tr>
+                        <tr>
+                            <td>15 Sept 2026, 16:30</td>
+                            <td>Top Up Via Doku (Wali)</td>
+                            <td style="color: var(--primary); font-weight: 600;">100.000</td>
+                            <td>-</td>
+                            <td style="font-weight: 600;">100.000</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- Panel 2: Top Up -->
+        <!-- PANEL 2: TOP UP DOKU -->
         <div id="topup" class="panel">
-            <h3>Kirim Uang Saku</h3>
-            <p style="margin-bottom: 1rem; color: #6b7280;">Pilih nominal untuk dikirimkan ke rekening uang saku santri.</p>
-            <input type="number" id="topup-amount" placeholder="Nominal Top Up (Contoh: 100000)" />
+            <div class="panel-title">
+                <span>Kirim Uang Saku Santri</span>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                Isi saldo uang saku santri secara instan menggunakan Payment Gateway Doku.
+            </p>
+            
+            <div class="input-group">
+                <label for="topup-amount">Nominal Top Up (Rp)</label>
+                <input type="number" id="topup-amount" placeholder="Masukkan Nominal (Contoh: 100000)" />
+            </div>
+
             <button class="btn-doku" onclick="processDokuTopup()">Lanjutkan Pembayaran via Doku</button>
         </div>
 
-        <!-- Panel 3: Info Paket -->
+        <!-- PANEL 3: INFO PAKET -->
         <div id="paket" class="panel">
-            <h3>Notifikasi Pengiriman Paket</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Tanggal Diterima</th>
-                        <th>Pengirim</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="paket-data">
-                    <!-- Data dari Supabase akan dirender di sini -->
-                    <tr>
-                        <td>14 Sept 2026</td>
-                        <td>Keluarga/Wali</td>
-                        <td><span style="color: green; font-weight: bold;">Sudah Diambil Santri</span></td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="panel-title">
+                <span>Notifikasi & Bukti Penerimaan Paket</span>
+            </div>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tanggal Tiba</th>
+                            <th>Pengirim / Ekspedisi</th>
+                            <th>Deskripsi Barang</th>
+                            <th>Foto Bukti</th>
+                            <th>Status Penerimaan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paket-data">
+                        <tr>
+                            <td>16 Sept 2026</td>
+                            <td>Ibu Wali / J&T Express</td>
+                            <td>Paket Pakaian & Obat-obatan</td>
+                            <td>
+                                <!-- Foto Bukti Terima Paket -->
+                                <img src="logo.jpg" alt="Foto Paket" class="paket-thumb" onclick="openFotoModal(this.src, 'Paket Pakaian & Obat-obatan')">
+                            </td>
+                            <td><span class="badge badge-pending">Di Pos Asrama</span></td>
+                        </tr>
+                        <tr>
+                            <td>12 Sept 2026</td>
+                            <td>Toko Baju / Shopee</td>
+                            <td>Jubah & Kitab Kebersihan</td>
+                            <td>
+                                <img src="logo.jpg" alt="Foto Paket" class="paket-thumb" onclick="openFotoModal(this.src, 'Jubah & Kitab Kebersihan')">
+                            </td>
+                            <td><span class="badge badge-success">Sudah Diambil Santri</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
     </div>
 
-    <script>
-        // Konfigurasi Supabase (Silakan isi URL & Key dari dashboard Supabase Anda)
-        /*
-        const supabaseUrl = 'YOUR_SUPABASE_URL';
-        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-        */
+    <!-- MODAL POPUP BUKTI FOTO PAKET -->
+    <div id="foto-modal" class="modal" onclick="closeFotoModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="closeFotoModal()">&times;</span>
+            <h4 id="modal-caption" style="margin-bottom: 1rem; color: var(--primary);">Bukti Penerimaan Paket</h4>
+            <img id="modal-image" src="" alt="Foto Paket Besar">
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Klik di luar gambar untuk menutup</p>
+        </div>
+    </div>
 
-        // Fungsi Simulasi Login
+    <script>
+        // ================= SIMULASI LOGIN & LOGOUT =================
         function handleLogin() {
             const idInput = document.getElementById('id-santri-input').value;
             
-            // Validasi sederhana (Nantinya diganti dengan query Supabase: eq('id_santri', idInput))
-            if(idInput.length > 3) { 
+            if(idInput.trim().length >= 3) {
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('dashboard-section').style.display = 'block';
                 
-                // Set Header Info
                 document.getElementById('santri-id-display').innerText = idInput;
-                document.getElementById('santri-name-display').innerText = "Santri Al-Bashiroh"; // Ambil dari DB
-                
-                // TODO: Panggil fungsi fetch data mutasi & paket dari supabase di sini
+                document.getElementById('santri-name-display').innerText = "Santri Al-Bashiroh";
             } else {
                 document.getElementById('login-error').style.display = 'block';
             }
         }
 
-        // Fungsi Logout
         function handleLogout() {
             document.getElementById('id-santri-input').value = '';
             document.getElementById('login-error').style.display = 'none';
@@ -264,26 +614,69 @@
             document.getElementById('login-section').style.display = 'block';
         }
 
-        // Fungsi Pergantian Tab Dashboard
-        function switchTab(tabId) {
-            // Hapus class active dari semua tombol dan panel
+        // ================= SWITCH TAB =================
+        function switchTab(tabId, evt) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
 
-            // Set active class ke elemen yang dipilih
-            event.target.classList.add('active');
+            evt.currentTarget.classList.add('active');
             document.getElementById(tabId).classList.add('active');
         }
 
-        // Fungsi integrasi Gateway Doku
+        // ================= FILTER MUTASI (PER HARI & PER TANGGAL) =================
+        function toggleFilterMode() {
+            const type = document.getElementById('filter-type').value;
+            const groupHari = document.getElementById('filter-hari-group');
+            const groupStart = document.getElementById('filter-tanggal-group');
+            const groupEnd = document.getElementById('filter-tanggal-end-group');
+
+            if (type === 'hari') {
+                groupHari.style.display = 'flex';
+                groupStart.style.display = 'none';
+                groupEnd.style.display = 'none';
+            } else {
+                groupHari.style.display = 'none';
+                groupStart.style.display = 'flex';
+                groupEnd.style.display = 'flex';
+            }
+        }
+
+        function applyFilterMutasi() {
+            const type = document.getElementById('filter-type').value;
+            if (type === 'hari') {
+                const hari = document.getElementById('select-hari').value;
+                alert('Menampilkan mutasi untuk pilihan: ' + hari);
+            } else {
+                const start = document.getElementById('start-date').value;
+                const end = document.getElementById('end-date').value;
+                if (!start || !end) {
+                    alert('Harap pilih tanggal mulai dan tanggal akhir.');
+                    return;
+                }
+                alert('Menampilkan mutasi dari tanggal ' + start + ' sampai ' + end);
+            }
+            // Disini tempat pemanggilan query Supabase berdasarkan filter yang dipilih
+        }
+
+        // ================= PREVIEW FOTO PAKET =================
+        function openFotoModal(imageSrc, caption) {
+            document.getElementById('modal-image').src = imageSrc;
+            document.getElementById('modal-caption').innerText = "Bukti Paket: " + caption;
+            document.getElementById('foto-modal').style.display = 'flex';
+        }
+
+        function closeFotoModal() {
+            document.getElementById('foto-modal').style.display = 'none';
+        }
+
+        // ================= INTEGRASI DOKU =================
         function processDokuTopup() {
             const amount = document.getElementById('topup-amount').value;
-            if(!amount || amount <= 0) {
-                alert("Silakan masukkan nominal yang valid.");
+            if (!amount || amount <= 0) {
+                alert("Silakan masukkan nominal top up yang valid.");
                 return;
             }
-            // TODO: Kirim data invoice ke API backend untuk memproses URL Redirect Doku
-            alert("Memproses top up senilai Rp" + amount + ". Mengalihkan ke halaman pembayaran Doku...");
+            alert("Mengarahkan ke Gateway Doku untuk pembayaran sebesar Rp " + parseInt(amount).toLocaleString('id-ID'));
         }
     </script>
 </body>
