@@ -16,21 +16,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // 1. Fungsi Login
 async function handleLogin() {
-    const idInput = document.getElementById('id-santri-input').value.trim();
+    const idInputEl = document.getElementById('id-santri-input');
+    const idInput = idInputEl ? idInputEl.value.trim() : '';
     const errorEl = document.getElementById('login-error');
     const btn = document.querySelector('#login-section button');
     
-    errorEl.style.display = 'none';
+    if (errorEl) errorEl.style.display = 'none';
 
     if (!idInput) {
-        errorEl.innerText = 'Masukkan ID / UID Santri terlebih dahulu.';
-        errorEl.style.display = 'block';
+        if (errorEl) {
+            errorEl.innerText = 'Masukkan ID / UID Santri terlebih dahulu.';
+            errorEl.style.display = 'block';
+        }
         return;
     }
 
     try {
-        btn.innerText = "Memeriksa...";
-        btn.disabled = true;
+        if (btn) {
+            btn.innerText = "Memeriksa...";
+            btn.disabled = true;
+        }
 
         const { data: santri, error } = await db
             .from('Data_Santri')
@@ -40,73 +45,85 @@ async function handleLogin() {
 
         if (error) {
             console.error("Supabase Error:", error);
-            errorEl.innerText = 'Gagal terhubung ke database: ' + error.message;
-            errorEl.style.display = 'block';
+            if (errorEl) {
+                errorEl.innerText = 'Gagal terhubung ke database: ' + error.message;
+                errorEl.style.display = 'block';
+            }
             return;
         }
 
         if (!santri) {
-            errorEl.innerText = 'UID Santri ' + idInput + ' tidak ditemukan.';
-            errorEl.style.display = 'block';
+            if (errorEl) {
+                errorEl.innerText = 'UID Santri ' + idInput + ' tidak ditemukan.';
+                errorEl.style.display = 'block';
+            }
             return;
         }
 
         currentSantri = santri;
-        document.getElementById('santri-id-display').innerText = santri.UID;
-        document.getElementById('santri-name-display').innerText = santri.Nama || 'Santri Al-Bashiroh';
+        const displayUid = document.getElementById('santri-id-display');
+        const displayName = document.getElementById('santri-name-display');
+        if (displayUid) displayUid.innerText = santri.UID;
+        if (displayName) displayName.innerText = santri.Nama || 'Santri Al-Bashiroh';
 
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('dashboard-section').style.display = 'block';
+        const loginSec = document.getElementById('login-section');
+        const dashSec = document.getElementById('dashboard-section');
+        if (loginSec) loginSec.style.display = 'none';
+        if (dashSec) dashSec.style.display = 'block';
 
         fetchMutasi();
         fetchPaket();
 
     } catch (err) {
         console.error("System Error:", err);
-        errorEl.innerText = 'Terjadi kesalahan sistem.';
-        errorEl.style.display = 'block';
+        if (errorEl) {
+            errorEl.innerText = 'Terjadi kesalahan sistem.';
+            errorEl.style.display = 'block';
+        }
     } finally {
-        btn.innerText = "Masuk Dashboard";
-        btn.disabled = false;
+        if (btn) {
+            btn.innerText = "Masuk Dashboard";
+            btn.disabled = false;
+        }
     }
 }
 
 function handleLogout() {
     currentSantri = null;
-    document.getElementById('id-santri-input').value = '';
-    document.getElementById('login-error').style.display = 'none';
-    document.getElementById('dashboard-section').style.display = 'none';
-    document.getElementById('login-section').style.display = 'block';
+    const input = document.getElementById('id-santri-input');
+    if (input) input.value = '';
+    const errorEl = document.getElementById('login-error');
+    if (errorEl) errorEl.style.display = 'none';
+    const dashSec = document.getElementById('dashboard-section');
+    if (dashSec) dashSec.style.display = 'none';
+    const loginSec = document.getElementById('login-section');
+    if (loginSec) loginSec.style.display = 'block';
 }
 
 function switchTab(tabId, evt) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
 
-    evt.currentTarget.classList.add('active');
-    document.getElementById(tabId).classList.add('active');
+    if (evt && evt.currentTarget) {
+        evt.currentTarget.classList.add('active');
+    }
+    const targetPanel = document.getElementById(tabId);
+    if (targetPanel) {
+        targetPanel.classList.add('active');
+    }
 }
 
 // 2. Toggle Tampilan Mode Filter
 function toggleFilterMode() {
-    const type = document.getElementById('filter-type').value;
+    const filterTypeEl = document.getElementById('filter-type');
+    const type = filterTypeEl ? filterTypeEl.value : 'all';
     const groupHari = document.getElementById('filter-hari-group');
     const groupStart = document.getElementById('filter-tanggal-group');
     const groupEnd = document.getElementById('filter-tanggal-end-group');
 
-    if (type === 'hari') {
-        groupHari.style.display = 'flex';
-        groupStart.style.display = 'none';
-        groupEnd.style.display = 'none';
-    } else if (type === 'tanggal') {
-        groupHari.style.display = 'none';
-        groupStart.style.display = 'flex';
-        groupEnd.style.display = 'flex';
-    } else {
-        groupHari.style.display = 'none';
-        groupStart.style.display = 'none';
-        groupEnd.style.display = 'none';
-    }
+    if (groupHari) groupHari.style.display = (type === 'hari') ? 'flex' : 'none';
+    if (groupStart) groupStart.style.display = (type === 'tanggal') ? 'flex' : 'none';
+    if (groupEnd) groupEnd.style.display = (type === 'tanggal') ? 'flex' : 'none';
 }
 
 function applyFilterMutasi() {
@@ -118,6 +135,8 @@ async function fetchMutasi() {
     if (!currentSantri) return;
 
     const tbody = document.getElementById('mutasi-data');
+    if (!tbody) return;
+
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data transaksi...</td></tr>';
 
     let query = db
@@ -126,10 +145,12 @@ async function fetchMutasi() {
         .eq('ID', currentSantri.ID)
         .order('Waktu', { ascending: false });
 
-    const filterType = document.getElementById('filter-type').value;
+    const filterTypeEl = document.getElementById('filter-type');
+    const filterType = filterTypeEl ? filterTypeEl.value : 'all';
 
     if (filterType === 'hari') {
-        const singleDate = document.getElementById('single-date').value;
+        const singleDateEl = document.getElementById('single-date');
+        const singleDate = singleDateEl ? singleDateEl.value : '';
         if (singleDate) {
             query = query
                 .gte('Waktu', `${singleDate}T00:00:00`)
@@ -140,8 +161,10 @@ async function fetchMutasi() {
             return;
         }
     } else if (filterType === 'tanggal') {
-        const start = document.getElementById('start-date').value;
-        const end = document.getElementById('end-date').value;
+        const startEl = document.getElementById('start-date');
+        const endEl = document.getElementById('end-date');
+        const start = startEl ? startEl.value : '';
+        const end = endEl ? endEl.value : '';
 
         if (start && end) {
             query = query
@@ -210,6 +233,8 @@ async function fetchPaket() {
     if (!currentSantri) return;
 
     const tbody = document.getElementById('paket-data');
+    if (!tbody) return;
+
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data paket...</td></tr>';
 
     const { data, error } = await db
@@ -249,20 +274,60 @@ async function fetchPaket() {
 }
 
 function openFotoModal(imageSrc, caption) {
-    document.getElementById('modal-image').src = imageSrc;
-    document.getElementById('modal-caption').innerText = "Bukti Paket: " + caption;
-    document.getElementById('foto-modal').style.display = 'flex';
+    const imgEl = document.getElementById('modal-image');
+    const capEl = document.getElementById('modal-caption');
+    const modalEl = document.getElementById('foto-modal');
+    if (imgEl) imgEl.src = imageSrc;
+    if (capEl) capEl.innerText = "Bukti Paket: " + caption;
+    if (modalEl) modalEl.style.display = 'flex';
 }
 
 function closeFotoModal() {
-    document.getElementById('foto-modal').style.display = 'none';
+    const modalEl = document.getElementById('foto-modal');
+    if (modalEl) modalEl.style.display = 'none';
 }
 
-function processDokuTopup() {
-    const amount = document.getElementById('topup-amount').value;
-    if (!amount || amount < 10000) {
+// 5. Fungsi Top Up DOKU (Integrasi ke Edge Function doku-checkout)
+async function processDokuTopup() {
+    if (!currentSantri) {
+        alert("Silakan login terlebih dahulu.");
+        return;
+    }
+
+    const inputEl = document.getElementById('topup-amount') || document.querySelector('.panel input[type="number"]');
+    const amountVal = inputEl ? inputEl.value : null;
+    const amount = parseInt(amountVal);
+
+    if (!amount || isNaN(amount) || amount < 10000) {
         alert("Nominal minimal top up adalah Rp 10.000");
         return;
     }
-    alert("Proses Top Up DOKU sebesar Rp " + Number(amount).toLocaleString('id-ID') + " untuk UID: " + (currentSantri ? currentSantri.UID : '-'));
+
+    const orderId = `TOPUP-${currentSantri.UID}-${Date.now()}`;
+
+    try {
+        const res = await fetch('https://ijipnnhgbzwatdzbdlek.supabase.co/functions/v1/doku-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                uid: currentSantri.UID,
+                amount: amount,
+                order_id: orderId
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.response && data.response.payment && data.response.payment.url) {
+            window.location.href = data.response.payment.url;
+        } else if (data.url) {
+            window.location.href = data.url;
+        } else {
+            console.error('DOKU Error Response:', data);
+            alert('Gagal memproses pembayaran DOKU.');
+        }
+    } catch (err) {
+        console.error('Error Top Up:', err);
+        alert('Terjadi kesalahan koneksi saat memproses pembayaran DOKU.');
+    }
 }
