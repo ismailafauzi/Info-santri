@@ -286,8 +286,8 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Process Top Up DOKU (Otomatis Salin Nominal & Buka Link Pembayaran)
-async function processDokuTopup() {
+// 5. Process Top Up DOKU (Responsif & Langsung)
+function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
         return;
@@ -302,30 +302,13 @@ async function processDokuTopup() {
         return;
     }
 
-    // Salin nominal secara otomatis ke clipboard agar mudah ditempel di halaman DOKU
-    try {
-        await navigator.clipboard.writeText(amount.toString());
-    } catch (e) {
-        console.warn("Gagal menyalin otomatis ke clipboard:", e);
-    }
-
     const btn = document.querySelector('#topup-btn') || event.target;
-    const originalText = btn ? btn.innerText : "Memproses...";
     if (btn) {
         btn.innerText = "Mengarahkan...";
         btn.disabled = true;
     }
 
-    alert(`Nominal Rp ${amount.toLocaleString('id-ID')} telah disalin otomatis!\n\nSilakan klik tombol *Paste* (Ctrl+V) pada kolom Nominal Pembayaran di halaman DOKU.`);
-
-    // Arahkan ke halaman DOKU Payment Link
+    // Langsung arahkan ke halaman DOKU Payment Link secara responsif
     const paymentUrl = "https://pay.doku.com/p-link/p/uangsakusantri";
     window.location.href = paymentUrl;
-
-    setTimeout(() => {
-        if (btn) {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }
-    }, 2000);
 }
