@@ -286,14 +286,13 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Process Top Up DOKU (Payment Link Integration)
+// 5. Process Top Up DOKU (Otomatis Salin Nominal & Buka Link Pembayaran)
 async function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
         return;
     }
 
-    // Ambil nilai dari input nominal top up
     const inputEl = document.getElementById('topup-amount') || document.querySelector('.panel input[type="number"]');
     const amountVal = inputEl ? inputEl.value : null;
     const amount = parseInt(amountVal);
@@ -303,38 +302,30 @@ async function processDokuTopup() {
         return;
     }
 
-    const btn = document.querySelector('#topup-btn') || event.target;
-    const originalText = btn.innerText;
-    btn.innerText = "Memproses...";
-    btn.disabled = true;
-
+    // Salin nominal secara otomatis ke clipboard agar mudah ditempel di halaman DOKU
     try {
-        // Memanggil Supabase Edge Function dengan payload yang akurat
-        const { data, error } = await db.functions.invoke('doku-checkout', {
-            body: { 
-                amount: amount,                 // Nominal uang yang diinput wali santri
-                santriName: currentSantri.Nama, // Nama santri
-                santriId: currentSantri.UID     // UID santri
-            }
-        });
-
-        if (error) {
-            throw new Error(error.message || "Gagal terhubung ke fungsi pembayaran.");
-        }
-
-        const paymentUrl = data?.response?.payment?.url;
-
-        if (!paymentUrl) {
-            throw new Error("URL pembayaran tidak ditemukan.");
-        }
-
-        // Redirect otomatis ke halaman DOKU Payment Link dengan nominal yang benar
-        window.location.href = paymentUrl;
-
-    } catch (err) {
-        console.error("Topup Error:", err);
-        alert("Terjadi kesalahan saat memproses pembayaran: " + err.message);
-        btn.innerText = originalText;
-        btn.disabled = false;
+        await navigator.clipboard.writeText(amount.toString());
+    } catch (e) {
+        console.warn("Gagal menyalin otomatis ke clipboard:", e);
     }
+
+    const btn = document.querySelector('#topup-btn') || event.target;
+    const originalText = btn ? btn.innerText : "Memproses...";
+    if (btn) {
+        btn.innerText = "Mengarahkan...";
+        btn.disabled = true;
+    }
+
+    alert(`Nominal Rp ${amount.toLocaleString('id-ID')} telah disalin otomatis!\n\nSilakan klik tombol *Paste* (Ctrl+V) pada kolom Nominal Pembayaran di halaman DOKU.`);
+
+    // Arahkan ke halaman DOKU Payment Link
+    const paymentUrl = "https://pay.doku.com/p-link/p/uangsakusantri";
+    window.location.href = paymentUrl;
+
+    setTimeout(() => {
+        if (btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }, 2000);
 }
