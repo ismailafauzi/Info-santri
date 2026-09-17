@@ -286,7 +286,7 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Process Top Up DOKU (Responsif & Langsung)
+// 5. Process Top Up DOKU (Aman dari error event target)
 function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
@@ -302,13 +302,13 @@ function processDokuTopup() {
         return;
     }
 
-    const btn = document.querySelector('#topup-btn') || event.target;
+    const btn = document.getElementById('topup-btn') || document.querySelector('.panel button');
     if (btn) {
         btn.innerText = "Mengarahkan...";
         btn.disabled = true;
     }
 
-    // Langsung arahkan ke halaman DOKU Payment Link secara responsif
+    // Langsung arahkan ke halaman DOKU Payment Link
     const paymentUrl = "https://pay.doku.com/p-link/p/uangsakusantri";
     window.location.href = paymentUrl;
 }
