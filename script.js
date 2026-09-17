@@ -286,8 +286,8 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Process Top Up DOKU (Mengarah Langsung ke Payment Link Doku)
-function processDokuTopup() {
+// 5. Process Top Up DOKU via Checkout API (Dynamic Invoice)
+async function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
         return;
@@ -302,9 +302,40 @@ function processDokuTopup() {
         return;
     }
 
-    // Link Pembayaran Doku yang sudah dibuat di dasbor
-    const dokuPaymentLink = "https://pay.doku.com/p-link/p/uangsakusantri";
+    const btn = document.querySelector('#topup-btn') || event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "Memproses...";
+    btn.disabled = true;
 
-    // Langsung arahkan wali santri ke halaman pembayaran Doku
-    window.location.href = dokuPaymentLink;
+    try {
+        // Memanggil Supabase Edge Function 'doku-checkout' untuk membuat tagihan dinamis
+        const { data, error } = await db.functions.invoke('doku-checkout', {
+            body: { 
+                amount: amount, 
+                santriName: currentSantri.Nama, 
+                santriId: currentSantri.UID 
+            }
+        });
+
+        if (error) {
+            throw new Error(error.message || "Gagal terhubung ke fungsi pembayaran.");
+        }
+
+        // Mengambil URL pembayaran dari respons DOKU
+        const paymentUrl = data?.response?.payment?.url;
+
+        if (!paymentUrl) {
+            console.error("Respon DOKU:", data);
+            throw new Error("URL pembayaran tidak ditemukan dari DOKU.");
+        }
+
+        // Langsung arahkan wali santri ke halaman DOKU dengan nominal yang sudah otomatis terisi
+        window.location.href = paymentUrl;
+
+    } catch (err) {
+        console.error("Topup Error:", err);
+        alert("Terjadi kesalahan saat memproses pembayaran: " + err.message);
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
