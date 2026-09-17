@@ -286,8 +286,8 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Process Top Up DOKU dengan Debug Raw Response
-async function processDokuTopup() {
+// 5. Process Top Up DOKU (Mengarah Langsung ke Payment Link Doku)
+function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
         return;
@@ -302,48 +302,9 @@ async function processDokuTopup() {
         return;
     }
 
-    const orderId = `TOPUP-${currentSantri.UID}-${Date.now()}`;
+    // Link Pembayaran Doku yang sudah dibuat di dasbor
+    const dokuPaymentLink = "https://pay.doku.com/p-link/p/uangsakusantri";
 
-    try {
-        const res = await fetch('https://ijipnnhgbzwatdzbdlek.supabase.co/functions/v1/doku-checkout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            },
-            body: JSON.stringify({
-                uid: currentSantri.UID,
-                nama: currentSantri.Nama || 'Santri',
-                amount: amount,
-                order_id: orderId
-            })
-        });
-
-        const rawText = await res.text();
-        console.log('HTTP Status:', res.status);
-        console.log('Raw Response:', rawText);
-
-        let data = {};
-        try {
-            data = JSON.parse(rawText);
-        } catch (e) {
-            alert('Respon dari server bukan JSON valid: ' + rawText);
-            return;
-        }
-
-        const redirectUrl = data?.response?.payment?.url 
-                         || data?.payment?.url 
-                         || data?.payment_url 
-                         || data?.url;
-
-        if (redirectUrl) {
-            window.location.href = redirectUrl;
-        } else {
-            const errDetail = data?.error || data?.message || rawText || 'Respon kosong';
-            alert(`Gagal memproses pembayaran DOKU (${res.status}): ${errDetail}`);
-        }
-    } catch (err) {
-        console.error('Error Top Up:', err);
-        alert('Terjadi kesalahan koneksi saat memproses pembayaran DOKU.');
-    }
+    // Langsung arahkan wali santri ke halaman pembayaran Doku
+    window.location.href = dokuPaymentLink;
 }
