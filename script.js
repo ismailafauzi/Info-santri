@@ -286,13 +286,14 @@ function closeFotoModal() {
     if (modalEl) modalEl.style.display = 'none';
 }
 
-// 5. Process Top Up DOKU via Checkout API (Dynamic Invoice)
+// 5. Process Top Up DOKU (Payment Link Integration)
 async function processDokuTopup() {
     if (!currentSantri) {
         alert("Silakan login terlebih dahulu.");
         return;
     }
 
+    // Ambil nilai dari input nominal top up
     const inputEl = document.getElementById('topup-amount') || document.querySelector('.panel input[type="number"]');
     const amountVal = inputEl ? inputEl.value : null;
     const amount = parseInt(amountVal);
@@ -308,12 +309,12 @@ async function processDokuTopup() {
     btn.disabled = true;
 
     try {
-        // Memanggil Supabase Edge Function 'doku-checkout' untuk membuat tagihan dinamis
+        // Memanggil Supabase Edge Function dengan payload yang akurat
         const { data, error } = await db.functions.invoke('doku-checkout', {
             body: { 
-                amount: amount, 
-                santriName: currentSantri.Nama, 
-                santriId: currentSantri.UID 
+                amount: amount,                 // Nominal uang yang diinput wali santri
+                santriName: currentSantri.Nama, // Nama santri
+                santriId: currentSantri.UID     // UID santri
             }
         });
 
@@ -321,15 +322,13 @@ async function processDokuTopup() {
             throw new Error(error.message || "Gagal terhubung ke fungsi pembayaran.");
         }
 
-        // Mengambil URL pembayaran dari respons DOKU
         const paymentUrl = data?.response?.payment?.url;
 
         if (!paymentUrl) {
-            console.error("Respon DOKU:", data);
-            throw new Error("URL pembayaran tidak ditemukan dari DOKU.");
+            throw new Error("URL pembayaran tidak ditemukan.");
         }
 
-        // Langsung arahkan wali santri ke halaman DOKU dengan nominal yang sudah otomatis terisi
+        // Redirect otomatis ke halaman DOKU Payment Link dengan nominal yang benar
         window.location.href = paymentUrl;
 
     } catch (err) {
