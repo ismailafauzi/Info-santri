@@ -8,10 +8,16 @@
     <!-- Favicon / Icon Page -->
     <link rel="icon" type="image/jpeg" href="logo.jpg">
 
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         :root {
             --primary: #059669;        /* Hijau utama */
             --primary-hover: #047857;  /* Hijau gelap hover */
+            --primary-dark: #065f46;   /* Hijau tua untuk gradient */
             --primary-light: #d1fae5;  /* Hijau aksen */
             --bg: #f0fdf4;             /* Background Hijau Muda Lembut */
             --card-bg: #ffffff;
@@ -27,11 +33,15 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+            font-family: 'Poppins', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         }
 
         body {
-            background-color: var(--bg);
+            background:
+                radial-gradient(circle at 10% 0%, rgba(5, 150, 105, 0.08), transparent 40%),
+                radial-gradient(circle at 90% 10%, rgba(5, 150, 105, 0.06), transparent 35%),
+                var(--bg);
+            background-attachment: fixed;
             color: var(--text-main);
             display: flex;
             justify-content: center;
@@ -59,14 +69,18 @@
             height: 110px;
             object-fit: contain;
             margin-bottom: 1rem;
+            /* Menghilangkan efek "kotak putih" pada logo berformat JPG
+               dengan melebur warna putih background logo ke kartu putih */
+            mix-blend-mode: multiply;
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08));
         }
 
         #login-section h2 {
             color: var(--primary);
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.6rem;
+            font-weight: 800;
             margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
         }
 
         #login-section p {
@@ -143,7 +157,7 @@
             padding: 1.2rem 1.8rem;
             border-radius: 16px;
             box-shadow: var(--shadow-md);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -160,6 +174,11 @@
             width: 55px;
             height: 55px;
             object-fit: contain;
+            border-radius: 50%;
+            padding: 4px;
+            background: var(--primary-light);
+            /* Menghilangkan kotak putih dari file logo.jpg */
+            mix-blend-mode: multiply;
         }
 
         .santri-info h3 {
@@ -171,6 +190,67 @@
         .santri-info p {
             color: var(--text-muted);
             font-size: 0.85rem;
+        }
+
+        /* --- KARTU SALDO --- */
+        .balance-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            border-radius: 16px;
+            padding: 1.4rem 1.8rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 10px 20px -6px rgba(5, 150, 105, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-card::before {
+            content: "";
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 140px;
+            height: 140px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+
+        .balance-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .balance-amount {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-top: 0.15rem;
+        }
+
+        .balance-refresh {
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.35);
+            color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            z-index: 1;
+        }
+
+        .balance-refresh:hover {
+            background: rgba(255,255,255,0.3);
         }
 
         .btn-logout {
@@ -302,6 +382,14 @@
         }
 
         tr:last-child td { border-bottom: none; }
+
+        tbody tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        tbody tr:nth-child(even) td {
+            background-color: rgba(5, 150, 105, 0.02);
+        }
 
         /* FOTO PAKET THUMBNAIL */
         .paket-thumb {
@@ -439,11 +527,20 @@
             <button class="btn-logout" onclick="handleLogout()">Keluar</button>
         </div>
 
+        <!-- Kartu Saldo Saat Ini -->
+        <div class="balance-card">
+            <div>
+                <div class="balance-label">💰 Saldo Uang Saku Saat Ini</div>
+                <div class="balance-amount" id="saldo-display">Rp 0</div>
+            </div>
+            <button class="balance-refresh" onclick="refreshSaldo()">↻ Perbarui</button>
+        </div>
+
         <!-- Tab Navigation -->
         <div class="tab-container">
-            <button class="tab-btn active" onclick="switchTab('mutasi', event)">Mutasi Uang Saku</button>
-            <button class="tab-btn" onclick="switchTab('topup', event)">Top Up Doku</button>
-            <button class="tab-btn" onclick="switchTab('paket', event)">Info Paket & Barang</button>
+            <button class="tab-btn active" onclick="switchTab('mutasi', event)">💵 Mutasi Uang Saku</button>
+            <button class="tab-btn" onclick="switchTab('topup', event)">💳 Top Up Doku</button>
+            <button class="tab-btn" onclick="switchTab('paket', event)">📦 Info Paket & Barang</button>
         </div>
 
         <!-- PANEL 1: MUTASI UANG SAKU -->
