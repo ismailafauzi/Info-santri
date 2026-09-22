@@ -198,6 +198,10 @@ function applyFilterMutasi() {
 }
 
 // 3. Fetch Mutasi dari Tabel Log_Transaksi
+// Strategi: ambil SELURUH riwayat transaksi santri terlebih dahulu (tanpa filter tanggal),
+// hitung saldo berjalan di setiap transaksi berdasarkan saldo saat ini, BARU kemudian
+// filter tanggal diterapkan di sisi client. Dengan begitu kolom "Sisa Saldo" tetap akurat
+// dan tetap muncul walau memakai filter "Per Hari" atau "Per Rentang Tanggal".
 async function fetchMutasi() {
     if (!currentSantri) return;
 
@@ -206,23 +210,15 @@ async function fetchMutasi() {
 
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data transaksi...</td></tr>';
 
-    let query = db
-        .from('Log_Transaksi')
-        .select('*')
-        .eq('ID', currentSantri.ID)
-        .order('Waktu', { ascending: false });
-
     const filterTypeEl = document.getElementById('filter-type');
     const filterType = filterTypeEl ? filterTypeEl.value : 'all';
 
+    // Validasi input filter dulu sebelum fetch, supaya tidak fetch sia-sia
+    let singleDate = '', startDate = '', endDate = '';
     if (filterType === 'hari') {
         const singleDateEl = document.getElementById('single-date');
-        const singleDate = singleDateEl ? singleDateEl.value : '';
-        if (singleDate) {
-            query = query
-                .gte('Waktu', `${singleDate}T00:00:00`)
-                .lte('Waktu', `${singleDate}T23:59:59`);
-        } else {
+        singleDate = singleDateEl ? singleDateEl.value : '';
+        if (!singleDate) {
             alert('Silakan pilih tanggal terlebih dahulu.');
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Pilih tanggal filter.</td></tr>';
             return;
@@ -230,27 +226,23 @@ async function fetchMutasi() {
     } else if (filterType === 'tanggal') {
         const startEl = document.getElementById('start-date');
         const endEl = document.getElementById('end-date');
-        const start = startEl ? startEl.value : '';
-        const end = endEl ? endEl.value : '';
-
-        if (start && end) {
-            query = query
-                .gte('Waktu', `${start}T00:00:00`)
-                .lte('Waktu', `${end}T23:59:59`);
-        } else if (start) {
-            query = query.gte('Waktu', `${start}T00:00:00`);
-        } else if (end) {
-            query = query.lte('Waktu', `${end}T23:59:59`);
-        } else {
+        startDate = startEl ? startEl.value : '';
+        endDate = endEl ? endEl.value : '';
+        if (!startDate && !endDate) {
             alert('Silakan isi rentang tanggal.');
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Pilih rentang tanggal.</td></tr>';
             return;
         }
     }
 
-    let { data, error } = await query;
+    // Ambil SELURUH riwayat (tanpa filter tanggal) supaya perhitungan saldo berjalan akurat
+    let { data, error } = await db
+        .from('Log_Transaksi')
+        .select('*')
+        .eq('ID', currentSantri.ID)
+        .order('Waktu', { ascending: false });
 
-    if ((!data || data.length === 0) && currentSantri.Nama && filterType === 'all') {
+    if ((!data || data.length === 0) && currentSantri.Nama) {
         const fallbackRes = await db
             .from('Log_Transaksi')
             .select('*')
@@ -268,34 +260,63 @@ async function fetchMutasi() {
         return;
     }
 
-    if (!data || data.length === 0) {
+    data = data || [];
+
+    // Hitung saldo berjalan di seluruh riwayat (data terurut terbaru -> terlama)
+    const currentBalanceVal = pickField(currentSantri, SALDO_KEYS_SANTRI);
+    const hasPerRowSaldo = data.some(item => pickField(item, SALDO_KEYS_LOG) !== null);
+    let runningBalances = null;
+    if (!hasPerRowSaldo && currentBalanceVal !== null) {
+        runningBalances = computeRunningBalances(data, Number(currentBalanceVal));
+    }
+
+    const dataWithSaldo = data.map((item, idx) => {
+        let saldoAkhir = pickField(item, SALDO_KEYS_LOG);
+        if (saldoAkhir === null && runningBalances) saldoAkhir = runningBalances[idx];
+        return { ...item, __saldoAkhir: saldoAkhir };
+    });
+
+    // Terapkan filter tanggal di sisi client, setelah saldo dihitung
+    let filtered = dataWithSaldo;
+    if (filterType === 'hari') {
+        const start = new Date(`${singleDate}T00:00:00`);
+        const end = new Date(`${singleDate}T23:59:59.999`);
+        filtered = dataWithSaldo.filter(item => {
+            const w = item.Waktu || item.Waktu_WIB || item.created_at;
+            if (!w) return false;
+            const t = new Date(w);
+            return !isNaN(t) && t >= start && t <= end;
+        });
+    } else if (filterType === 'tanggal') {
+        const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
+        const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
+        filtered = dataWithSaldo.filter(item => {
+            const w = item.Waktu || item.Waktu_WIB || item.created_at;
+            if (!w) return false;
+            const t = new Date(w);
+            if (isNaN(t)) return false;
+            if (start && t < start) return false;
+            if (end && t > end) return false;
+            return true;
+        });
+    }
+
+    if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Tidak ada riwayat transaksi pada tanggal/periode ini.</td></tr>';
         return;
     }
 
-    // Coba dapatkan saldo saat ini santri untuk menghitung saldo berjalan.
-    // Hanya dipakai sebagai fallback bila baris log TIDAK punya kolom saldo sendiri,
-    // dan hanya akurat untuk tampilan "Semua Riwayat" (tanpa filter tanggal).
-    const currentBalanceVal = pickField(currentSantri, SALDO_KEYS_SANTRI);
-    const hasPerRowSaldo = data.some(item => pickField(item, SALDO_KEYS_LOG) !== null);
-    let runningBalances = null;
-    if (!hasPerRowSaldo && currentBalanceVal !== null && filterType === 'all') {
-        runningBalances = computeRunningBalances(data, Number(currentBalanceVal));
-    }
-
-    tbody.innerHTML = data.map((item, idx) => {
+    tbody.innerHTML = filtered.map(item => {
         const statusText = item.Status || 'Transaksi';
         const isJajan = statusText.toLowerCase().includes('jajan') || statusText.toLowerCase().includes('keluar');
         const nominal = item.Nominal ? Number(item.Nominal).toLocaleString('id-ID') : '0';
-        
+
         const masuk = isJajan ? '-' : nominal;
         const keluar = isJajan ? nominal : '-';
         const waktu = item.Waktu_WIB || item.Waktu || item.created_at;
 
-        let saldoAkhir = pickField(item, SALDO_KEYS_LOG);
-        if (saldoAkhir === null && runningBalances) saldoAkhir = runningBalances[idx];
-        const saldoText = saldoAkhir !== null && saldoAkhir !== undefined
-            ? Number(saldoAkhir).toLocaleString('id-ID')
+        const saldoText = item.__saldoAkhir !== null && item.__saldoAkhir !== undefined
+            ? Number(item.__saldoAkhir).toLocaleString('id-ID')
             : '-';
 
         return `
