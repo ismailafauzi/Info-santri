@@ -67,12 +67,12 @@
         .logo-login {
             width: 110px;
             height: 110px;
-            object-fit: contain;
+            object-fit: cover;
             margin-bottom: 1rem;
-            /* Menghilangkan efek "kotak putih" pada logo berformat JPG
-               dengan melebur warna putih background logo ke kartu putih */
-            mix-blend-mode: multiply;
-            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08));
+            border-radius: 50%;
+            /* Memotong logo jadi lingkaran supaya sudut kotak putih pada file JPG hilang total */
+            clip-path: circle(50% at 50% 50%);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.12);
         }
 
         #login-section h2 {
@@ -173,12 +173,11 @@
         .header-logo {
             width: 55px;
             height: 55px;
-            object-fit: contain;
+            object-fit: cover;
             border-radius: 50%;
-            padding: 4px;
-            background: var(--primary-light);
-            /* Menghilangkan kotak putih dari file logo.jpg */
-            mix-blend-mode: multiply;
+            /* Memotong logo jadi lingkaran supaya sudut kotak putih pada file JPG hilang total */
+            clip-path: circle(50% at 50% 50%);
+            border: 2px solid var(--primary-light);
         }
 
         .santri-info h3 {
