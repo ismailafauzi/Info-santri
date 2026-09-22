@@ -7,6 +7,69 @@ const db = window.supabaseApp;
 
 let currentSantri = null;
 
+// --- Util Saldo ---
+// Karena nama kolom saldo bisa berbeda-beda tergantung struktur tabel Supabase,
+// fungsi ini mencoba beberapa kemungkinan nama kolom yang umum dipakai.
+const SALDO_KEYS_SANTRI = ['Saldo', 'saldo', 'Saldo_Santri', 'saldo_santri', 'Balance', 'balance', 'Sisa_Saldo', 'sisa_saldo', 'Uang_Saku', 'uang_saku'];
+const SALDO_KEYS_LOG = ['Saldo_Akhir', 'saldo_akhir', 'Saldo_Setelah', 'saldo_setelah', 'Running_Balance', 'running_balance', 'Saldo', 'saldo', 'Balance', 'balance'];
+
+function pickField(obj, keys) {
+    if (!obj) return null;
+    for (const k of keys) {
+        if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+    }
+    return null;
+}
+
+function formatRupiah(num) {
+    const n = Number(num) || 0;
+    return 'Rp ' + n.toLocaleString('id-ID');
+}
+
+// Ambil & tampilkan saldo terbaru santri dari tabel Data_Santri
+async function refreshSaldo() {
+    if (!currentSantri) return;
+
+    const saldoEl = document.getElementById('saldo-display');
+    if (saldoEl) saldoEl.innerText = 'Memuat...';
+
+    const { data, error } = await db
+        .from('Data_Santri')
+        .select('*')
+        .eq('UID', currentSantri.UID)
+        .maybeSingle();
+
+    if (error || !data) {
+        console.error('Gagal memuat saldo:', error);
+        if (saldoEl) saldoEl.innerText = formatRupiah(pickField(currentSantri, SALDO_KEYS_SANTRI));
+        return;
+    }
+
+    currentSantri = { ...currentSantri, ...data };
+    const saldoVal = pickField(currentSantri, SALDO_KEYS_SANTRI);
+    if (saldoEl) saldoEl.innerText = formatRupiah(saldoVal);
+
+    // Refresh juga tabel mutasi supaya kolom "Sisa Saldo" ikut update
+    fetchMutasi();
+}
+
+// Menghitung saldo berjalan mundur dari saldo saat ini.
+// Asumsi: data terurut dari transaksi TERBARU ke TERLAMA (descending by Waktu),
+// dan hanya akurat jika seluruh riwayat (tanpa filter tanggal) yang ditampilkan.
+function computeRunningBalances(data, currentBalance) {
+    const balances = new Array(data.length).fill(null);
+    let bal = currentBalance;
+    for (let i = 0; i < data.length; i++) {
+        balances[i] = bal;
+        const statusText = (data[i].Status || '').toLowerCase();
+        const isJajan = statusText.includes('jajan') || statusText.includes('keluar');
+        const nominal = Number(data[i].Nominal) || 0;
+        // Mundur ke saldo SEBELUM transaksi ini terjadi
+        bal = isJajan ? bal + nominal : bal - nominal;
+    }
+    return balances;
+}
+
 // Set default tanggal hari ini pada input date saat halaman dimuat
 document.addEventListener("DOMContentLoaded", () => {
     const today = new Date().toISOString().split('T')[0];
@@ -71,8 +134,12 @@ async function handleLogin() {
         if (loginSec) loginSec.style.display = 'none';
         if (dashSec) dashSec.style.display = 'block';
 
+        const saldoEl = document.getElementById('saldo-display');
+        if (saldoEl) saldoEl.innerText = formatRupiah(pickField(santri, SALDO_KEYS_SANTRI));
+
         fetchMutasi();
         fetchPaket();
+        refreshSaldo();
 
     } catch (err) {
         console.error("System Error:", err);
@@ -206,7 +273,17 @@ async function fetchMutasi() {
         return;
     }
 
-    tbody.innerHTML = data.map(item => {
+    // Coba dapatkan saldo saat ini santri untuk menghitung saldo berjalan.
+    // Hanya dipakai sebagai fallback bila baris log TIDAK punya kolom saldo sendiri,
+    // dan hanya akurat untuk tampilan "Semua Riwayat" (tanpa filter tanggal).
+    const currentBalanceVal = pickField(currentSantri, SALDO_KEYS_SANTRI);
+    const hasPerRowSaldo = data.some(item => pickField(item, SALDO_KEYS_LOG) !== null);
+    let runningBalances = null;
+    if (!hasPerRowSaldo && currentBalanceVal !== null && filterType === 'all') {
+        runningBalances = computeRunningBalances(data, Number(currentBalanceVal));
+    }
+
+    tbody.innerHTML = data.map((item, idx) => {
         const statusText = item.Status || 'Transaksi';
         const isJajan = statusText.toLowerCase().includes('jajan') || statusText.toLowerCase().includes('keluar');
         const nominal = item.Nominal ? Number(item.Nominal).toLocaleString('id-ID') : '0';
@@ -215,13 +292,19 @@ async function fetchMutasi() {
         const keluar = isJajan ? nominal : '-';
         const waktu = item.Waktu_WIB || item.Waktu || item.created_at;
 
+        let saldoAkhir = pickField(item, SALDO_KEYS_LOG);
+        if (saldoAkhir === null && runningBalances) saldoAkhir = runningBalances[idx];
+        const saldoText = saldoAkhir !== null && saldoAkhir !== undefined
+            ? Number(saldoAkhir).toLocaleString('id-ID')
+            : '-';
+
         return `
             <tr>
                 <td>${waktu ? new Date(waktu).toLocaleString('id-ID') : '-'}</td>
                 <td>${statusText}</td>
                 <td style="color: var(--primary); font-weight: 600;">${masuk}</td>
                 <td style="color: #dc2626; font-weight: 600;">${keluar}</td>
-                <td style="font-weight: 600;">-</td>
+                <td style="font-weight: 600;">${saldoText}</td>
             </tr>
         `;
     }).join('');
