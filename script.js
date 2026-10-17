@@ -1,418 +1,311 @@
-// Inisialisasi Supabase Client
+// ==========================================
+// 1. KONFIGURASI
+// ==========================================
 const SUPABASE_URL = "https://ijipnnhgbzwatdzbdlek.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaXBubmhnYnp3YXRkemJkbGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMjc3NDIsImV4cCI6MjEwMzkwMzc0Mn0.TviHZ5O25ZSif9DawhcywKD9c3d4bv3yGnLPGk6iMAU";
+const NOMOR_WA = "6285161999315";
 
-window.supabaseApp = window.supabaseApp || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const db = window.supabaseApp;
+const NAMA_TABEL_SANTRI = "Data_Santri";
+const NAMA_TABEL_RIWAYAT = "Log_Transaksi";
 
-let currentSantri = null;
+// TODO: sesuaikan dengan nama tabel SPP di Supabase Anda.
+// Kolom yang dikenali (huruf besar/kecil bebas): ID atau UID, Bulan, Tahun, Nominal, Status, Tanggal_Bayar
+const NAMA_TABEL_SPP = "Tagihan_SPP";
 
-// --- Util Saldo ---
-// Karena nama kolom saldo bisa berbeda-beda tergantung struktur tabel Supabase,
-// fungsi ini mencoba beberapa kemungkinan nama kolom yang umum dipakai.
-const SALDO_KEYS_SANTRI = ['Saldo', 'saldo', 'Saldo_Santri', 'saldo_santri', 'Balance', 'balance', 'Sisa_Saldo', 'sisa_saldo', 'Uang_Saku', 'uang_saku'];
-const SALDO_KEYS_LOG = ['Saldo_Akhir', 'saldo_akhir', 'Saldo_Setelah', 'saldo_setelah', 'Running_Balance', 'running_balance', 'Saldo', 'saldo', 'Balance', 'balance'];
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function pickField(obj, keys) {
-    if (!obj) return null;
-    for (const k of keys) {
-        if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+let dataSantriSaatIni = null;
+let uidTerakhir = null;
+let logDataSaatIni = [];
+let sppDataSaatIni = [];
+let sedangMencari = false;
+
+const NAMA_BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+
+// ==========================================
+// 2. FUNGSI BANTUAN
+// ==========================================
+function tampilkanError(pesan) {
+  const el = document.getElementById("pesanError");
+  if (!el) return;
+  if (!pesan) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.classList.remove("hidden");
+  el.textContent = pesan;
+}
+
+function formatRp(angka) {
+  return "Rp " + Number(angka || 0).toLocaleString("id-ID");
+}
+
+function esc(teks) {
+  return String(teks == null ? "" : teks)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function pick(obj, keys) {
+  for (const k of keys) {
+    if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
+  }
+  return null;
+}
+
+function ambilTanggalLokal(iso) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(iso));
+}
+
+function formatWaktuTampil(iso) {
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta", day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).format(new Date(iso)).replace(",", "");
+}
+
+// ==========================================
+// 3. CARI DATA SANTRI
+// ==========================================
+async function cariSantri(uid) {
+  if (sedangMencari) return;
+  sedangMencari = true;
+  const btn = document.getElementById("btnCari");
+  if (btn) btn.disabled = true;
+
+  try {
+    tampilkanError(null);
+    document.getElementById("spinner").classList.remove("hidden");
+
+    const { data: santri, error } = await supabaseClient
+      .from(NAMA_TABEL_SANTRI).select("*").eq("UID", uid);
+    if (error) throw error;
+
+    if (!santri || santri.length === 0) {
+      document.getElementById("hasilWrapper").classList.add("hidden");
+      tampilkanError("❌ Data santri tidak ditemukan!");
+      return;
     }
-    return null;
+
+    const s = santri[0];
+
+    // Riwayat transaksi (difilter dengan kolom ID)
+    const { data: riwayat, error: errR } = await supabaseClient
+      .from(NAMA_TABEL_RIWAYAT).select("*").eq("ID", s.ID)
+      .order("Waktu", { ascending: false });
+    if (errR) throw errR;
+
+    // Tagihan SPP (tidak menggagalkan halaman bila tabel belum ada)
+    sppDataSaatIni = await ambilSpp(s);
+
+    uidTerakhir = uid;
+    dataSantriSaatIni = s;
+    logDataSaatIni = riwayat || [];
+
+    renderData();
+  } catch (err) {
+    console.error("Error Koneksi:", err);
+    tampilkanError("Kendala koneksi ke server Supabase: " + (err.message || err));
+  } finally {
+    document.getElementById("spinner").classList.add("hidden");
+    sedangMencari = false;
+    if (btn) btn.disabled = false;
+  }
 }
 
-function formatRupiah(num) {
-    const n = Number(num) || 0;
-    return 'Rp ' + n.toLocaleString('id-ID');
-}
-
-// Ambil & tampilkan saldo terbaru santri dari tabel Data_Santri
-async function refreshSaldo() {
-    if (!currentSantri) return;
-
-    const saldoEl = document.getElementById('saldo-display');
-    if (saldoEl) saldoEl.innerText = 'Memuat...';
-
-    const { data, error } = await db
-        .from('Data_Santri')
-        .select('*')
-        .eq('UID', currentSantri.UID)
-        .maybeSingle();
-
-    if (error || !data) {
-        console.error('Gagal memuat saldo:', error);
-        if (saldoEl) saldoEl.innerText = formatRupiah(pickField(currentSantri, SALDO_KEYS_SANTRI));
-        return;
+async function ambilSpp(santri) {
+  try {
+    let res = await supabaseClient.from(NAMA_TABEL_SPP).select("*").eq("ID", santri.ID);
+    if ((!res.data || res.data.length === 0) && !res.error) {
+      res = await supabaseClient.from(NAMA_TABEL_SPP).select("*").eq("UID", santri.UID);
     }
-
-    currentSantri = { ...currentSantri, ...data };
-    const saldoVal = pickField(currentSantri, SALDO_KEYS_SANTRI);
-    if (saldoEl) saldoEl.innerText = formatRupiah(saldoVal);
-
-    // Refresh juga tabel mutasi supaya kolom "Sisa Saldo" ikut update
-    fetchMutasi();
-}
-
-// Menghitung saldo berjalan mundur dari saldo saat ini.
-// Asumsi: data terurut dari transaksi TERBARU ke TERLAMA (descending by Waktu),
-// dan hanya akurat jika seluruh riwayat (tanpa filter tanggal) yang ditampilkan.
-function computeRunningBalances(data, currentBalance) {
-    const balances = new Array(data.length).fill(null);
-    let bal = currentBalance;
-    for (let i = 0; i < data.length; i++) {
-        balances[i] = bal;
-        const statusText = (data[i].Status || '').toLowerCase();
-        const isJajan = statusText.includes('jajan') || statusText.includes('keluar');
-        const nominal = Number(data[i].Nominal) || 0;
-        // Mundur ke saldo SEBELUM transaksi ini terjadi
-        bal = isJajan ? bal + nominal : bal - nominal;
+    if (res.error) {
+      console.warn("Tabel SPP tidak dapat dibaca:", res.error.message);
+      return [];
     }
-    return balances;
+    return res.data || [];
+  } catch (e) {
+    console.warn("Gagal memuat SPP:", e);
+    return [];
+  }
 }
 
-// Set default tanggal hari ini pada input date saat halaman dimuat
-document.addEventListener("DOMContentLoaded", () => {
-    const today = new Date().toISOString().split('T')[0];
-    const singleDateEl = document.getElementById('single-date');
-    if (singleDateEl) singleDateEl.value = today;
+// ==========================================
+// 4. RENDER
+// ==========================================
+function renderData() {
+  document.getElementById("pesanAwal").classList.add("hidden");
+  document.getElementById("hasilWrapper").classList.remove("hidden");
+  document.getElementById("namaSantri").textContent = dataSantriSaatIni.Nama || "-";
+  document.getElementById("saldoSantri").textContent = formatRp(pick(dataSantriSaatIni, ["Saldo", "saldo"]));
+
+  const pesanWA =
+    "_Assalamu'alaikum_ Ustadz.\n\n" +
+    "Saya wali dari ananda *" + dataSantriSaatIni.Nama + "* dengan ID Kartu *" + uidTerakhir + "*.\n\n" +
+    "Izin ingin *konfirmasi transfer* (top-up uang saku / pembayaran SPP) atau melaporkan kendala transaksi.\n\n" +
+    "Berikut saya lampirkan *screenshot bukti transfer*.\n\n" +
+    "Mohon bantuannya untuk diproses. _Jazakumullahu khairan._";
+  document.getElementById("tombolWA").href = "https://wa.me/" + NOMOR_WA + "?text=" + encodeURIComponent(pesanWA);
+
+  renderMutasiSection();
+  renderSpp();
+}
+
+function renderMutasiSection() {
+  if (logDataSaatIni.length === 0) {
+    document.getElementById("riwayatWrapper").classList.add("hidden");
+    document.getElementById("tidakAdaRiwayat").classList.remove("hidden");
+    return;
+  }
+  document.getElementById("riwayatWrapper").classList.remove("hidden");
+  document.getElementById("tidakAdaRiwayat").classList.add("hidden");
+
+  const tgl = logDataSaatIni.map((r) => ambilTanggalLokal(r.Waktu)).sort();
+  const min = tgl[0], max = tgl[tgl.length - 1];
+
+  const satu = document.getElementById("tanggalSatu");
+  satu.min = min; satu.max = max; satu.value = max;
+  const awal = document.getElementById("tanggalAwal");
+  awal.min = min; awal.max = max; awal.value = min;
+  const akhir = document.getElementById("tanggalAkhir");
+  akhir.min = min; akhir.max = max; akhir.value = max;
+
+  terapkanFilterTanggal();
+}
+
+function terapkanFilterTanggal() {
+  const mode = document.querySelector('input[name="modeTanggal"]:checked').value;
+  let a, b;
+  if (mode === "satu_hari") {
+    a = b = document.getElementById("tanggalSatu").value;
+  } else {
+    a = document.getElementById("tanggalAwal").value;
+    b = document.getElementById("tanggalAkhir").value;
+  }
+  const hasil = logDataSaatIni.filter((r) => {
+    const t = ambilTanggalLokal(r.Waktu);
+    return (!a || t >= a) && (!b || t <= b);
+  });
+  renderTabelRiwayat(hasil);
+  renderTabelHarian(hasil);
+}
+
+function renderTabelRiwayat(data) {
+  const w = document.getElementById("tabelRiwayat");
+  if (data.length === 0) {
+    w.innerHTML = '<p style="color:#6b7280;">Tidak ada transaksi pada tanggal yang dipilih.</p>';
+    return;
+  }
+  let html = "<table><thead><tr><th>Waktu Transaksi 📅</th><th>Nominal (Rp) 💵</th><th>Keterangan Status 📝</th></tr></thead><tbody>";
+  data.forEach((r) => {
+    html += "<tr><td>" + formatWaktuTampil(r.Waktu) + "</td><td>" + formatRp(r.Nominal) + "</td><td>" + esc(r.Status) + "</td></tr>";
+  });
+  w.innerHTML = html + "</tbody></table>";
+}
+
+function renderTabelHarian(data) {
+  const w = document.getElementById("tabelHarian");
+  if (data.length === 0) { w.innerHTML = ""; return; }
+
+  const grup = {};
+  data.forEach((r) => {
+    const t = ambilTanggalLokal(r.Waktu);
+    const key = t + "||" + r.Status;
+    if (!grup[key]) grup[key] = { tanggal: t, status: r.Status, total: 0 };
+    grup[key].total += Number(r.Nominal) || 0;
+  });
+  const daftar = Object.values(grup).sort((x, y) => x.tanggal.localeCompare(y.tanggal));
+
+  let html = "<table><thead><tr><th>Tanggal 📅</th><th>Keterangan Status 📝</th><th>Total Nominal (Rp) 💵</th></tr></thead><tbody>";
+  daftar.forEach((i) => {
+    const tt = new Date(i.tanggal + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+    html += "<tr><td>" + tt + "</td><td>" + esc(i.status) + "</td><td>" + formatRp(i.total) + "</td></tr>";
+  });
+  w.innerHTML = html + "</tbody></table>";
+}
+
+// ---------- SPP ----------
+function namaBulan(b) {
+  const n = Number(b);
+  if (!isNaN(n) && n >= 1 && n <= 12) return NAMA_BULAN[n - 1];
+  return String(b || "-");
+}
+
+function indeksBulan(b) {
+  const n = Number(b);
+  if (!isNaN(n) && n >= 1 && n <= 12) return n;
+  const i = NAMA_BULAN.findIndex((x) => x.toLowerCase() === String(b).toLowerCase());
+  return i >= 0 ? i + 1 : 0;
+}
+
+function sudahLunas(status) {
+  const s = String(status || "").toLowerCase();
+  return s.includes("lunas") && !s.includes("belum");
+}
+
+function renderSpp() {
+  const tabel = document.getElementById("tabelSpp");
+  const ringkas = document.getElementById("ringkasSpp");
+  const kosong = document.getElementById("tidakAdaSpp");
+
+  if (sppDataSaatIni.length === 0) {
+    tabel.innerHTML = ""; ringkas.innerHTML = "";
+    kosong.classList.remove("hidden");
+    return;
+  }
+  kosong.classList.add("hidden");
+
+  const baris = sppDataSaatIni.map((r) => ({
+    bulan: pick(r, ["Bulan", "bulan"]),
+    tahun: pick(r, ["Tahun", "tahun"]),
+    nominal: Number(pick(r, ["Nominal", "nominal", "Jumlah", "jumlah"])) || 0,
+    status: pick(r, ["Status", "status"]) || "Belum Lunas",
+    tglBayar: pick(r, ["Tanggal_Bayar", "tanggal_bayar", "Tgl_Bayar"]),
+  })).sort((a, b) => (Number(b.tahun) - Number(a.tahun)) || (indeksBulan(b.bulan) - indeksBulan(a.bulan)));
+
+  const belum = baris.filter((r) => !sudahLunas(r.status));
+  const totalBelum = belum.reduce((s, r) => s + r.nominal, 0);
+
+  ringkas.innerHTML =
+    '<div><div class="l">Bulan Belum Lunas</div><div class="v ' + (belum.length ? "merah" : "") + '">' + belum.length + " bulan</div></div>" +
+    '<div><div class="l">Total Tunggakan</div><div class="v ' + (totalBelum ? "merah" : "") + '">' + formatRp(totalBelum) + "</div></div>";
+
+  let html = "<table><thead><tr><th>Bulan 📅</th><th>Nominal (Rp) 💵</th><th>Status 📝</th><th>Tgl Bayar</th></tr></thead><tbody>";
+  baris.forEach((r) => {
+    const lunas = sudahLunas(r.status);
+    const tgl = r.tglBayar ? ambilTanggalLokal(r.tglBayar).split("-").reverse().join("/") : "-";
+    html += "<tr><td>" + esc(namaBulan(r.bulan)) + " " + esc(r.tahun || "") + "</td><td>" + formatRp(r.nominal) +
+      '</td><td><span class="badge ' + (lunas ? "badge-lunas" : "badge-belum") + '">' + (lunas ? "Lunas" : "Belum Lunas") +
+      "</span></td><td>" + tgl + "</td></tr>";
+  });
+  tabel.innerHTML = html + "</tbody></table>";
+}
+
+// ==========================================
+// 5. EVENT LISTENERS
+// ==========================================
+document.getElementById("btnCari").addEventListener("click", () => {
+  const uid = document.getElementById("uidInput").value.trim();
+  if (!uid) { tampilkanError("❌ Silakan masukkan Nomor ID Kartu terlebih dahulu."); return; }
+  cariSantri(uid);
 });
 
-// 1. Fungsi Login
-async function handleLogin() {
-    const idInputEl = document.getElementById('id-santri-input');
-    const idInput = idInputEl ? idInputEl.value.trim() : '';
-    const errorEl = document.getElementById('login-error');
-    const btn = document.querySelector('#login-section button');
-    
-    if (errorEl) errorEl.style.display = 'none';
+document.getElementById("uidInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); if (!sedangMencari) document.getElementById("btnCari").click(); }
+});
 
-    if (!idInput) {
-        if (errorEl) {
-            errorEl.innerText = 'Masukkan ID / UID Santri terlebih dahulu.';
-            errorEl.style.display = 'block';
-        }
-        return;
-    }
+document.querySelectorAll('input[name="modeTanggal"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    document.getElementById("satuHariWrapper").style.display = radio.value === "satu_hari" ? "block" : "none";
+    document.getElementById("rentangWrapper").classList.toggle("aktif", radio.value === "rentang");
+    terapkanFilterTanggal();
+  });
+});
 
-    try {
-        if (btn) {
-            btn.innerText = "Memeriksa...";
-            btn.disabled = true;
-        }
+["tanggalSatu", "tanggalAwal", "tanggalAkhir"].forEach((id) =>
+  document.getElementById(id).addEventListener("change", terapkanFilterTanggal)
+);
 
-        const { data: santri, error } = await db
-            .from('Data_Santri')
-            .select('*')
-            .eq('UID', idInput)
-            .maybeSingle();
-
-        if (error) {
-            console.error("Supabase Error:", error);
-            if (errorEl) {
-                errorEl.innerText = 'Gagal terhubung ke database: ' + error.message;
-                errorEl.style.display = 'block';
-            }
-            return;
-        }
-
-        if (!santri) {
-            if (errorEl) {
-                errorEl.innerText = 'UID Santri ' + idInput + ' tidak ditemukan.';
-                errorEl.style.display = 'block';
-            }
-            return;
-        }
-
-        currentSantri = santri;
-        const displayUid = document.getElementById('santri-id-display');
-        const displayName = document.getElementById('santri-name-display');
-        if (displayUid) displayUid.innerText = santri.UID;
-        if (displayName) displayName.innerText = santri.Nama || 'Santri Al-Bashiroh';
-
-        const loginSec = document.getElementById('login-section');
-        const dashSec = document.getElementById('dashboard-section');
-        if (loginSec) loginSec.style.display = 'none';
-        if (dashSec) dashSec.style.display = 'block';
-
-        const saldoEl = document.getElementById('saldo-display');
-        if (saldoEl) saldoEl.innerText = formatRupiah(pickField(santri, SALDO_KEYS_SANTRI));
-
-        fetchMutasi();
-        fetchPaket();
-        refreshSaldo();
-
-    } catch (err) {
-        console.error("System Error:", err);
-        if (errorEl) {
-            errorEl.innerText = 'Terjadi kesalahan sistem.';
-            errorEl.style.display = 'block';
-        }
-    } finally {
-        if (btn) {
-            btn.innerText = "Masuk Dashboard";
-            btn.disabled = false;
-        }
-    }
-}
-
-function handleLogout() {
-    currentSantri = null;
-    const input = document.getElementById('id-santri-input');
-    if (input) input.value = '';
-    const errorEl = document.getElementById('login-error');
-    if (errorEl) errorEl.style.display = 'none';
-    const dashSec = document.getElementById('dashboard-section');
-    if (dashSec) dashSec.style.display = 'none';
-    const loginSec = document.getElementById('login-section');
-    if (loginSec) loginSec.style.display = 'block';
-}
-
-function switchTab(tabId, evt) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
-
-    if (evt && evt.currentTarget) {
-        evt.currentTarget.classList.add('active');
-    }
-    const targetPanel = document.getElementById(tabId);
-    if (targetPanel) {
-        targetPanel.classList.add('active');
-    }
-}
-
-// 2. Toggle Tampilan Mode Filter
-function toggleFilterMode() {
-    const filterTypeEl = document.getElementById('filter-type');
-    const type = filterTypeEl ? filterTypeEl.value : 'all';
-    const groupHari = document.getElementById('filter-hari-group');
-    const groupStart = document.getElementById('filter-tanggal-group');
-    const groupEnd = document.getElementById('filter-tanggal-end-group');
-
-    if (groupHari) groupHari.style.display = (type === 'hari') ? 'flex' : 'none';
-    if (groupStart) groupStart.style.display = (type === 'tanggal') ? 'flex' : 'none';
-    if (groupEnd) groupEnd.style.display = (type === 'tanggal') ? 'flex' : 'none';
-}
-
-function applyFilterMutasi() {
-    fetchMutasi();
-}
-
-// 3. Fetch Mutasi dari Tabel Log_Transaksi
-// Strategi: ambil SELURUH riwayat transaksi santri terlebih dahulu (tanpa filter tanggal),
-// hitung saldo berjalan di setiap transaksi berdasarkan saldo saat ini, BARU kemudian
-// filter tanggal diterapkan di sisi client. Dengan begitu kolom "Sisa Saldo" tetap akurat
-// dan tetap muncul walau memakai filter "Per Hari" atau "Per Rentang Tanggal".
-async function fetchMutasi() {
-    if (!currentSantri) return;
-
-    const tbody = document.getElementById('mutasi-data');
-    if (!tbody) return;
-
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data transaksi...</td></tr>';
-
-    const filterTypeEl = document.getElementById('filter-type');
-    const filterType = filterTypeEl ? filterTypeEl.value : 'all';
-
-    // Validasi input filter dulu sebelum fetch, supaya tidak fetch sia-sia
-    let singleDate = '', startDate = '', endDate = '';
-    if (filterType === 'hari') {
-        const singleDateEl = document.getElementById('single-date');
-        singleDate = singleDateEl ? singleDateEl.value : '';
-        if (!singleDate) {
-            alert('Silakan pilih tanggal terlebih dahulu.');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Pilih tanggal filter.</td></tr>';
-            return;
-        }
-    } else if (filterType === 'tanggal') {
-        const startEl = document.getElementById('start-date');
-        const endEl = document.getElementById('end-date');
-        startDate = startEl ? startEl.value : '';
-        endDate = endEl ? endEl.value : '';
-        if (!startDate && !endDate) {
-            alert('Silakan isi rentang tanggal.');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Pilih rentang tanggal.</td></tr>';
-            return;
-        }
-    }
-
-    // Ambil SELURUH riwayat (tanpa filter tanggal) supaya perhitungan saldo berjalan akurat
-    let { data, error } = await db
-        .from('Log_Transaksi')
-        .select('*')
-        .eq('ID', currentSantri.ID)
-        .order('Waktu', { ascending: false });
-
-    if ((!data || data.length === 0) && currentSantri.Nama) {
-        const fallbackRes = await db
-            .from('Log_Transaksi')
-            .select('*')
-            .eq('Nama', currentSantri.Nama)
-            .order('Waktu', { ascending: false });
-        if (fallbackRes.data && fallbackRes.data.length > 0) {
-            data = fallbackRes.data;
-            error = null;
-        }
-    }
-
-    if (error) {
-        console.error('Error fetching mutasi:', error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626;">Gagal memuat data transaksi.</td></tr>';
-        return;
-    }
-
-    data = data || [];
-
-    // Hitung saldo berjalan di seluruh riwayat (data terurut terbaru -> terlama)
-    const currentBalanceVal = pickField(currentSantri, SALDO_KEYS_SANTRI);
-    const hasPerRowSaldo = data.some(item => pickField(item, SALDO_KEYS_LOG) !== null);
-    let runningBalances = null;
-    if (!hasPerRowSaldo && currentBalanceVal !== null) {
-        runningBalances = computeRunningBalances(data, Number(currentBalanceVal));
-    }
-
-    const dataWithSaldo = data.map((item, idx) => {
-        let saldoAkhir = pickField(item, SALDO_KEYS_LOG);
-        if (saldoAkhir === null && runningBalances) saldoAkhir = runningBalances[idx];
-        return { ...item, __saldoAkhir: saldoAkhir };
-    });
-
-    // Terapkan filter tanggal di sisi client, setelah saldo dihitung
-    let filtered = dataWithSaldo;
-    if (filterType === 'hari') {
-        const start = new Date(`${singleDate}T00:00:00`);
-        const end = new Date(`${singleDate}T23:59:59.999`);
-        filtered = dataWithSaldo.filter(item => {
-            const w = item.Waktu || item.Waktu_WIB || item.created_at;
-            if (!w) return false;
-            const t = new Date(w);
-            return !isNaN(t) && t >= start && t <= end;
-        });
-    } else if (filterType === 'tanggal') {
-        const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
-        const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
-        filtered = dataWithSaldo.filter(item => {
-            const w = item.Waktu || item.Waktu_WIB || item.created_at;
-            if (!w) return false;
-            const t = new Date(w);
-            if (isNaN(t)) return false;
-            if (start && t < start) return false;
-            if (end && t > end) return false;
-            return true;
-        });
-    }
-
-    if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Tidak ada riwayat transaksi pada tanggal/periode ini.</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = filtered.map(item => {
-        const statusText = item.Status || 'Transaksi';
-        const isJajan = statusText.toLowerCase().includes('jajan') || statusText.toLowerCase().includes('keluar');
-        const nominal = item.Nominal ? Number(item.Nominal).toLocaleString('id-ID') : '0';
-
-        const masuk = isJajan ? '-' : nominal;
-        const keluar = isJajan ? nominal : '-';
-        const waktu = item.Waktu_WIB || item.Waktu || item.created_at;
-
-        const saldoText = item.__saldoAkhir !== null && item.__saldoAkhir !== undefined
-            ? Number(item.__saldoAkhir).toLocaleString('id-ID')
-            : '-';
-
-        return `
-            <tr>
-                <td>${waktu ? new Date(waktu).toLocaleString('id-ID') : '-'}</td>
-                <td>${statusText}</td>
-                <td style="color: var(--primary); font-weight: 600;">${masuk}</td>
-                <td style="color: #dc2626; font-weight: 600;">${keluar}</td>
-                <td style="font-weight: 600;">${saldoText}</td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// 4. Fetch Paket dari Tabel paket_santri
-async function fetchPaket() {
-    if (!currentSantri) return;
-
-    const tbody = document.getElementById('paket-data');
-    if (!tbody) return;
-
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem;">Mengambil data paket...</td></tr>';
-
-    const { data, error } = await db
-        .from('paket_santri')
-        .select('*')
-        .eq('UID', currentSantri.UID);
-
-    if (error) {
-        console.error('Error fetching paket:', error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Belum ada riwayat paket masuk.</td></tr>';
-        return;
-    }
-
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280; padding:1.5rem;">Belum ada riwayat paket masuk.</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = data.map(p => {
-        const statusText = p.status || 'Di Pos Asrama';
-        const isSuccess = statusText.toLowerCase().includes('sudah') || statusText.toLowerCase().includes('diambil');
-        const badgeClass = isSuccess ? 'badge-success' : 'badge-pending';
-        const imgUrl = p.foto_url || 'logo.jpg';
-
-        return `
-            <tr>
-                <td>${p.tanggal_tiba ? new Date(p.tanggal_tiba).toLocaleDateString('id-ID') : '-'}</td>
-                <td>${p.pengirim || '-'}</td>
-                <td>${p.deskripsi || '-'}</td>
-                <td>
-                    <img src="${imgUrl}" alt="Foto Paket" class="paket-thumb" onclick="openFotoModal('${imgUrl}', '${p.deskripsi || 'Paket'}')">
-                </td>
-                <td><span class="badge ${badgeClass}">${statusText}</span></td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function openFotoModal(imageSrc, caption) {
-    const imgEl = document.getElementById('modal-image');
-    const capEl = document.getElementById('modal-caption');
-    const modalEl = document.getElementById('foto-modal');
-    if (imgEl) imgEl.src = imageSrc;
-    if (capEl) capEl.innerText = "Bukti Paket: " + caption;
-    if (modalEl) modalEl.style.display = 'flex';
-}
-
-function closeFotoModal() {
-    const modalEl = document.getElementById('foto-modal');
-    if (modalEl) modalEl.style.display = 'none';
-}
-
-// 5. Process Top Up DOKU (Aman dari error event target)
-function processDokuTopup() {
-    if (!currentSantri) {
-        alert("Silakan login terlebih dahulu.");
-        return;
-    }
-
-    const inputEl = document.getElementById('topup-amount') || document.querySelector('.panel input[type="number"]');
-    const amountVal = inputEl ? inputEl.value : null;
-    const amount = parseInt(amountVal);
-
-    if (!amount || isNaN(amount) || amount < 10000) {
-        alert("Nominal minimal top up adalah Rp 10.000");
-        return;
-    }
-
-    const btn = document.getElementById('topup-btn') || document.querySelector('.panel button');
-    if (btn) {
-        btn.innerText = "Mengarahkan...";
-        btn.disabled = true;
-    }
-
-    // Langsung arahkan ke halaman DOKU Payment Link
-    const paymentUrl = "https://pay.doku.com/p-link/p/uangsakusantri";
-    window.location.href = paymentUrl;
-}
+window.addEventListener("unhandledrejection", (event) => {
+  const p = String((event.reason && event.reason.message) || event.reason || "");
+  if (p.includes("message channel closed") || p.includes("asynchronous response")) event.preventDefault();
+});
