@@ -1,311 +1,201 @@
-// ==========================================
-// 1. KONFIGURASI
-// ==========================================
-const SUPABASE_URL = "https://ijipnnhgbzwatdzbdlek.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaXBubmhnYnp3YXRkemJkbGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMjc3NDIsImV4cCI6MjEwMzkwMzc0Mn0.TviHZ5O25ZSif9DawhcywKD9c3d4bv3yGnLPGk6iMAU";
-const NOMOR_WA = "6285161999315";
-
-const NAMA_TABEL_SANTRI = "Data_Santri";
-const NAMA_TABEL_RIWAYAT = "Log_Transaksi";
-
-// TODO: sesuaikan dengan nama tabel SPP di Supabase Anda.
-// Kolom yang dikenali (huruf besar/kecil bebas): ID atau UID, Bulan, Tahun, Nominal, Status, Tanggal_Bayar
-const NAMA_TABEL_SPP = "Tagihan_SPP";
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let dataSantriSaatIni = null;
-let uidTerakhir = null;
-let logDataSaatIni = [];
-let sppDataSaatIni = [];
-let sedangMencari = false;
-
-const NAMA_BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-
-// ==========================================
-// 2. FUNGSI BANTUAN
-// ==========================================
-function tampilkanError(pesan) {
-  const el = document.getElementById("pesanError");
-  if (!el) return;
-  if (!pesan) { el.style.display = "none"; return; }
-  el.style.display = "block";
-  el.classList.remove("hidden");
-  el.textContent = pesan;
-}
-
-function formatRp(angka) {
-  return "Rp " + Number(angka || 0).toLocaleString("id-ID");
-}
-
-function esc(teks) {
-  return String(teks == null ? "" : teks)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function pick(obj, keys) {
-  for (const k of keys) {
-    if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Wali Santri - Al-Bashiroh</title>
+<link rel="icon" type="image/jpeg" href="logo.jpg">
+<style>
+  :root {
+    --hijau-tua: #0f766e;
+    --hijau-muda: #14b8a6;
+    --bg-terang: #e6f7f5;
   }
-  return null;
-}
-
-function ambilTanggalLokal(iso) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date(iso));
-}
-
-function formatWaktuTampil(iso) {
-  return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta", day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-  }).format(new Date(iso)).replace(",", "");
-}
-
-// ==========================================
-// 3. CARI DATA SANTRI
-// ==========================================
-async function cariSantri(uid) {
-  if (sedangMencari) return;
-  sedangMencari = true;
-  const btn = document.getElementById("btnCari");
-  if (btn) btn.disabled = true;
-
-  try {
-    tampilkanError(null);
-    document.getElementById("spinner").classList.remove("hidden");
-
-    const { data: santri, error } = await supabaseClient
-      .from(NAMA_TABEL_SANTRI).select("*").eq("UID", uid);
-    if (error) throw error;
-
-    if (!santri || santri.length === 0) {
-      document.getElementById("hasilWrapper").classList.add("hidden");
-      tampilkanError("❌ Data santri tidak ditemukan!");
-      return;
-    }
-
-    const s = santri[0];
-
-    // Riwayat transaksi (difilter dengan kolom ID)
-    const { data: riwayat, error: errR } = await supabaseClient
-      .from(NAMA_TABEL_RIWAYAT).select("*").eq("ID", s.ID)
-      .order("Waktu", { ascending: false });
-    if (errR) throw errR;
-
-    // Tagihan SPP (tidak menggagalkan halaman bila tabel belum ada)
-    sppDataSaatIni = await ambilSpp(s);
-
-    uidTerakhir = uid;
-    dataSantriSaatIni = s;
-    logDataSaatIni = riwayat || [];
-
-    renderData();
-  } catch (err) {
-    console.error("Error Koneksi:", err);
-    tampilkanError("Kendala koneksi ke server Supabase: " + (err.message || err));
-  } finally {
-    document.getElementById("spinner").classList.add("hidden");
-    sedangMencari = false;
-    if (btn) btn.disabled = false;
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(to top, var(--hijau-tua) 0%, var(--hijau-muda) 30%, var(--bg-terang) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding: 1.5rem 0.8rem;
   }
-}
-
-async function ambilSpp(santri) {
-  try {
-    let res = await supabaseClient.from(NAMA_TABEL_SPP).select("*").eq("ID", santri.ID);
-    if ((!res.data || res.data.length === 0) && !res.error) {
-      res = await supabaseClient.from(NAMA_TABEL_SPP).select("*").eq("UID", santri.UID);
-    }
-    if (res.error) {
-      console.warn("Tabel SPP tidak dapat dibaca:", res.error.message);
-      return [];
-    }
-    return res.data || [];
-  } catch (e) {
-    console.warn("Gagal memuat SPP:", e);
-    return [];
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(4px);
+    border-radius: 24px;
+    padding: 1.2rem 1.4rem 1.6rem 1.4rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   }
-}
-
-// ==========================================
-// 4. RENDER
-// ==========================================
-function renderData() {
-  document.getElementById("pesanAwal").classList.add("hidden");
-  document.getElementById("hasilWrapper").classList.remove("hidden");
-  document.getElementById("namaSantri").textContent = dataSantriSaatIni.Nama || "-";
-  document.getElementById("saldoSantri").textContent = formatRp(pick(dataSantriSaatIni, ["Saldo", "saldo"]));
-
-  const pesanWA =
-    "_Assalamu'alaikum_ Ustadz.\n\n" +
-    "Saya wali dari ananda *" + dataSantriSaatIni.Nama + "* dengan ID Kartu *" + uidTerakhir + "*.\n\n" +
-    "Izin ingin *konfirmasi transfer* (top-up uang saku / pembayaran SPP) atau melaporkan kendala transaksi.\n\n" +
-    "Berikut saya lampirkan *screenshot bukti transfer*.\n\n" +
-    "Mohon bantuannya untuk diproses. _Jazakumullahu khairan._";
-  document.getElementById("tombolWA").href = "https://wa.me/" + NOMOR_WA + "?text=" + encodeURIComponent(pesanWA);
-
-  renderMutasiSection();
-  renderSpp();
-}
-
-function renderMutasiSection() {
-  if (logDataSaatIni.length === 0) {
-    document.getElementById("riwayatWrapper").classList.add("hidden");
-    document.getElementById("tidakAdaRiwayat").classList.remove("hidden");
-    return;
+  .banner-wali {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--hijau-tua) 0%, var(--hijau-muda) 100%);
+    border-radius: 28px; padding: 2rem 1.5rem; margin-bottom: 1.5rem; color: white;
+    box-shadow: 0 8px 24px rgba(15,118,110,0.35); text-align: center;
   }
-  document.getElementById("riwayatWrapper").classList.remove("hidden");
-  document.getElementById("tidakAdaRiwayat").classList.add("hidden");
-
-  const tgl = logDataSaatIni.map((r) => ambilTanggalLokal(r.Waktu)).sort();
-  const min = tgl[0], max = tgl[tgl.length - 1];
-
-  const satu = document.getElementById("tanggalSatu");
-  satu.min = min; satu.max = max; satu.value = max;
-  const awal = document.getElementById("tanggalAwal");
-  awal.min = min; awal.max = max; awal.value = min;
-  const akhir = document.getElementById("tanggalAkhir");
-  akhir.min = min; akhir.max = max; akhir.value = max;
-
-  terapkanFilterTanggal();
-}
-
-function terapkanFilterTanggal() {
-  const mode = document.querySelector('input[name="modeTanggal"]:checked').value;
-  let a, b;
-  if (mode === "satu_hari") {
-    a = b = document.getElementById("tanggalSatu").value;
-  } else {
-    a = document.getElementById("tanggalAwal").value;
-    b = document.getElementById("tanggalAkhir").value;
+  .banner-wali img {
+    width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
+    border: 3px solid rgba(255,255,255,0.4); margin-bottom: 0.6rem;
   }
-  const hasil = logDataSaatIni.filter((r) => {
-    const t = ambilTanggalLokal(r.Waktu);
-    return (!a || t >= a) && (!b || t <= b);
-  });
-  renderTabelRiwayat(hasil);
-  renderTabelHarian(hasil);
-}
+  .banner-wali h1 { font-size: 1.5rem; font-weight: 700; margin: 0.2rem 0 0.1rem 0; }
+  .banner-wali .sub-judul { font-size: 1rem; font-weight: 600; margin: 0.1rem 0 0.2rem 0; opacity: 0.95; }
+  .banner-wali .deskripsi { font-size: 0.9rem; opacity: 0.85; margin: 0.2rem 0 0 0; line-height: 1.4; }
 
-function renderTabelRiwayat(data) {
-  const w = document.getElementById("tabelRiwayat");
-  if (data.length === 0) {
-    w.innerHTML = '<p style="color:#6b7280;">Tidak ada transaksi pada tanggal yang dipilih.</p>';
-    return;
+  .kartu-form, .kartu-santri, .kartu-upload {
+    background: white; border: 1px solid #e5e7eb; border-radius: 20px;
+    padding: 1.2rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
-  let html = "<table><thead><tr><th>Waktu Transaksi 📅</th><th>Nominal (Rp) 💵</th><th>Keterangan Status 📝</th></tr></thead><tbody>";
-  data.forEach((r) => {
-    html += "<tr><td>" + formatWaktuTampil(r.Waktu) + "</td><td>" + formatRp(r.Nominal) + "</td><td>" + esc(r.Status) + "</td></tr>";
-  });
-  w.innerHTML = html + "</tbody></table>";
-}
-
-function renderTabelHarian(data) {
-  const w = document.getElementById("tabelHarian");
-  if (data.length === 0) { w.innerHTML = ""; return; }
-
-  const grup = {};
-  data.forEach((r) => {
-    const t = ambilTanggalLokal(r.Waktu);
-    const key = t + "||" + r.Status;
-    if (!grup[key]) grup[key] = { tanggal: t, status: r.Status, total: 0 };
-    grup[key].total += Number(r.Nominal) || 0;
-  });
-  const daftar = Object.values(grup).sort((x, y) => x.tanggal.localeCompare(y.tanggal));
-
-  let html = "<table><thead><tr><th>Tanggal 📅</th><th>Keterangan Status 📝</th><th>Total Nominal (Rp) 💵</th></tr></thead><tbody>";
-  daftar.forEach((i) => {
-    const tt = new Date(i.tanggal + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-    html += "<tr><td>" + tt + "</td><td>" + esc(i.status) + "</td><td>" + formatRp(i.total) + "</td></tr>";
-  });
-  w.innerHTML = html + "</tbody></table>";
-}
-
-// ---------- SPP ----------
-function namaBulan(b) {
-  const n = Number(b);
-  if (!isNaN(n) && n >= 1 && n <= 12) return NAMA_BULAN[n - 1];
-  return String(b || "-");
-}
-
-function indeksBulan(b) {
-  const n = Number(b);
-  if (!isNaN(n) && n >= 1 && n <= 12) return n;
-  const i = NAMA_BULAN.findIndex((x) => x.toLowerCase() === String(b).toLowerCase());
-  return i >= 0 ? i + 1 : 0;
-}
-
-function sudahLunas(status) {
-  const s = String(status || "").toLowerCase();
-  return s.includes("lunas") && !s.includes("belum");
-}
-
-function renderSpp() {
-  const tabel = document.getElementById("tabelSpp");
-  const ringkas = document.getElementById("ringkasSpp");
-  const kosong = document.getElementById("tidakAdaSpp");
-
-  if (sppDataSaatIni.length === 0) {
-    tabel.innerHTML = ""; ringkas.innerHTML = "";
-    kosong.classList.remove("hidden");
-    return;
+  label { font-size: 0.95rem; font-weight: 600; color: #111827; display: block; margin-bottom: 0.4rem; }
+  input[type="text"], input[type="date"], select, input[type="file"] {
+    width: 100%; font-size: 1rem; padding: 0.7rem; border-radius: 14px;
+    border: 1px solid #d1d5db; margin-bottom: 0.8rem; background: #fff;
   }
-  kosong.classList.add("hidden");
+  button, .btn {
+    width: 100%; padding: 0.8rem 1rem; font-size: 1.05rem; font-weight: 600;
+    border-radius: 16px; background-color: var(--hijau-tua); color: white; border: none;
+    cursor: pointer; display: block; text-align: center; text-decoration: none;
+  }
+  button:hover, .btn:hover { background-color: #115e59; }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  const baris = sppDataSaatIni.map((r) => ({
-    bulan: pick(r, ["Bulan", "bulan"]),
-    tahun: pick(r, ["Tahun", "tahun"]),
-    nominal: Number(pick(r, ["Nominal", "nominal", "Jumlah", "jumlah"])) || 0,
-    status: pick(r, ["Status", "status"]) || "Belum Lunas",
-    tglBayar: pick(r, ["Tanggal_Bayar", "tanggal_bayar", "Tgl_Bayar"]),
-  })).sort((a, b) => (Number(b.tahun) - Number(a.tahun)) || (indeksBulan(b.bulan) - indeksBulan(a.bulan)));
+  .info-box { background: #dbeafe; color: #1e3a5f; border-radius: 16px; padding: 1rem 1.2rem; margin-bottom: 1rem; line-height: 1.6; }
+  .error-box { background: #fee2e2; color: #991b1b; border-radius: 16px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
+  .success-box { background: #d1fae5; color: #065f46; border-radius: 16px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
 
-  const belum = baris.filter((r) => !sudahLunas(r.status));
-  const totalBelum = belum.reduce((s, r) => s + r.nominal, 0);
+  .kartu-santri .label { font-size: 0.8rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+  .kartu-santri .nilai-nama { font-size: 1.3rem; font-weight: 700; color: #111827; margin-top: 0.2rem; }
+  .kartu-santri .nilai-saldo { font-size: 1.7rem; font-weight: 800; color: var(--hijau-tua); margin-top: 0.2rem; }
 
-  ringkas.innerHTML =
-    '<div><div class="l">Bulan Belum Lunas</div><div class="v ' + (belum.length ? "merah" : "") + '">' + belum.length + " bulan</div></div>" +
-    '<div><div class="l">Total Tunggakan</div><div class="v ' + (totalBelum ? "merah" : "") + '">' + formatRp(totalBelum) + "</div></div>";
+  h3 { text-align: left; color: #111827; }
+  .mode-tanggal { display: flex; gap: 1rem; margin-bottom: 0.8rem; }
+  .mode-tanggal label { display: flex; align-items: center; gap: 0.4rem; font-weight: 500; margin-bottom: 0; }
+  .mode-tanggal input[type="radio"] { width: auto; margin: 0; }
+  .rentang-wrapper { display: none; gap: 0.6rem; }
+  .rentang-wrapper.aktif { display: flex; }
+  .rentang-wrapper > div { flex: 1; }
 
-  let html = "<table><thead><tr><th>Bulan 📅</th><th>Nominal (Rp) 💵</th><th>Status 📝</th><th>Tgl Bayar</th></tr></thead><tbody>";
-  baris.forEach((r) => {
-    const lunas = sudahLunas(r.status);
-    const tgl = r.tglBayar ? ambilTanggalLokal(r.tglBayar).split("-").reverse().join("/") : "-";
-    html += "<tr><td>" + esc(namaBulan(r.bulan)) + " " + esc(r.tahun || "") + "</td><td>" + formatRp(r.nominal) +
-      '</td><td><span class="badge ' + (lunas ? "badge-lunas" : "badge-belum") + '">' + (lunas ? "Lunas" : "Belum Lunas") +
-      "</span></td><td>" + tgl + "</td></tr>";
-  });
-  tabel.innerHTML = html + "</tbody></table>";
-}
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid #e5e7eb; }
+  th { color: #6b7280; font-size: 0.78rem; text-transform: uppercase; }
 
-// ==========================================
-// 5. EVENT LISTENERS
-// ==========================================
-document.getElementById("btnCari").addEventListener("click", () => {
-  const uid = document.getElementById("uidInput").value.trim();
-  if (!uid) { tampilkanError("❌ Silakan masukkan Nomor ID Kartu terlebih dahulu."); return; }
-  cariSantri(uid);
-});
+  .badge { display: inline-block; padding: 0.2rem 0.7rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+  .badge-lunas { background: #d1fae5; color: #065f46; }
+  .badge-belum { background: #fee2e2; color: #991b1b; }
+  .badge-pending { background: #fef3c7; color: #92400e; }
 
-document.getElementById("uidInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); if (!sedangMencari) document.getElementById("btnCari").click(); }
-});
+  .ringkas-spp { display: flex; gap: 0.6rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .ringkas-spp > div { flex: 1; min-width: 140px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 14px; padding: 0.7rem 0.9rem; }
+  .ringkas-spp .l { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; }
+  .ringkas-spp .v { font-size: 1.15rem; font-weight: 800; color: var(--hijau-tua); }
+  .ringkas-spp .v.merah { color: #b91c1c; }
 
-document.querySelectorAll('input[name="modeTanggal"]').forEach((radio) => {
-  radio.addEventListener("change", () => {
-    document.getElementById("satuHariWrapper").style.display = radio.value === "satu_hari" ? "block" : "none";
-    document.getElementById("rentangWrapper").classList.toggle("aktif", radio.value === "rentang");
-    terapkanFilterTanggal();
-  });
-});
+  .wa-btn { background-color: #25D366; box-shadow: 0 4px 10px rgba(37,211,102,0.3); margin-top: 0.8rem; }
+  .wa-btn:hover { background-color: #1ebc59; }
+  .hidden { display: none; }
+  .spinner { text-align: center; padding: 1rem; color: #6b7280; }
+</style>
+</head>
+<body>
 
-["tanggalSatu", "tanggalAwal", "tanggalAkhir"].forEach((id) =>
-  document.getElementById(id).addEventListener("change", terapkanFilterTanggal)
-);
+<div class="container">
 
-window.addEventListener("unhandledrejection", (event) => {
-  const p = String((event.reason && event.reason.message) || event.reason || "");
-  if (p.includes("message channel closed") || p.includes("asynchronous response")) event.preventDefault();
-});
+  <div class="banner-wali">
+    <img src="logo.jpg" alt="Logo Pesantren">
+    <h1>Portal Tabungan &amp; Mutasi Santri</h1>
+    <p class="sub-judul">Pondok Pesantren Al-Bashiroh Purwakarta</p>
+    <p class="deskripsi">Pantau saldo, riwayat jajan, dan tagihan SPP ananda dengan mudah</p>
+  </div>
+
+  <div class="kartu-form">
+    <label for="uidInput">🔑 Nomor ID Kartu Santri</label>
+    <input type="text" id="uidInput" placeholder="Contoh: 1840474855">
+    <button id="btnCari">🔍 Cari Data Santri</button>
+  </div>
+
+  <div id="pesanAwal" class="info-box">
+    <i>Ahlan wa Sahlan</i>, <b>Bapak/Ibu Wali Santri</b>.<br><br>
+    Silakan masukkan Nomor ID Kartu Ananda, lalu tekan tombol <b>Cari Data Santri</b> untuk melihat saldo, riwayat mutasi jajan, dan tagihan SPP bulanan.<br><br>
+    <i>Jazakumullahu khairan</i> atas kepercayaan yang diberikan.
+  </div>
+
+  <div id="pesanError" class="error-box hidden"></div>
+  <div id="pesanSukses" class="success-box hidden"></div>
+  <div id="spinner" class="spinner hidden">Sedang mengambil data...</div>
+
+  <div id="hasilWrapper" class="hidden">
+
+    <div class="kartu-santri">
+      <div class="label">Nama Santri</div>
+      <div class="nilai-nama" id="namaSantri">-</div>
+      <div class="label" style="margin-top: 0.9rem;">Sisa Saldo Saat Ini</div>
+      <div class="nilai-saldo" id="saldoSantri">Rp 0</div>
+    </div>
+
+    <!-- ========== MUTASI ========== -->
+    <div id="riwayatWrapper">
+      <h3>📅 Filter Tanggal</h3>
+      <div class="mode-tanggal">
+        <label><input type="radio" name="modeTanggal" value="satu_hari" checked> Per 1 Hari</label>
+        <label><input type="radio" name="modeTanggal" value="rentang"> Rentang Tanggal</label>
+      </div>
+
+      <div id="satuHariWrapper">
+        <input type="date" id="tanggalSatu">
+      </div>
+
+      <div id="rentangWrapper" class="rentang-wrapper">
+        <div><label>Dari</label><input type="date" id="tanggalAwal"></div>
+        <div><label>Sampai</label><input type="date" id="tanggalAkhir"></div>
+      </div>
+
+      <h3>📜 Riwayat Mutasi Transaksi (Debit / Kredit)</h3>
+      <p style="color:#6b7280; font-size:0.9rem; margin-top:-0.5rem;">Berikut adalah catatan pengeluaran jajan dan top-up ananda:</p>
+      <div id="tabelRiwayat" class="table-scroll"></div>
+
+      <h3>📊 Total Transaksi Per Tanggal</h3>
+      <div id="tabelHarian" class="table-scroll"></div>
+    </div>
+
+    <div id="tidakAdaRiwayat" class="info-box hidden">📭 Belum ada riwayat transaksi jajan atau top-up untuk kartu ini.</div>
+
+    <!-- ========== TAGIHAN SPP ========== -->
+    <h3>🧾 Tagihan SPP Bulanan</h3>
+    <div id="ringkasSpp" class="ringkas-spp"></div>
+    <div id="tabelSpp" class="table-scroll"></div>
+    <div id="tidakAdaSpp" class="info-box hidden">📭 Belum ada data tagihan SPP untuk santri ini.</div>
+
+    <!-- ========== UPLOAD BUKTI TRANSFER ========== -->
+    <div class="kartu-upload">
+      <h3>📤 Form Upload Bukti Transfer</h3>
+      <p style="color:#6b7280; font-size:0.9rem; margin-bottom: 0.8rem;">Sudah transfer ke QRIS / Rekening Pondok? Unggah buktinya di sini agar diverifikasi oleh admin keuangan.</p>
+      
+      <label for="jenisBayar">Jenis Pembayaran</label>
+      <select id="jenisBayar">
+        <option value="SPP">Pembayaran SPP Bulanan</option>
+        <option value="Topup">Top-Up Uang Saku</option>
+      </select>
+
+      <div id="keteranganBayarWrapper">
+        <label for="keteranganBayar">Keterangan / Bulan yang Dibayar</label>
+        <input type="text" id="keteranganBayar" placeholder="Contoh: SPP Oktober 2026 atau Top-Up Rp 100.000">
+      </div>
+
+      <label for="fileBukti">File Bukti Transfer (Foto/PDF)</label>
+      <input type="file" id="fileBukti" accept="image/*,application/pdf">
+
+      <button id="btnUpload" style="background-color: #0d9488; margin-top: 0.5rem;">📤 Kirim Bukti Transfer</button>
+    </div>
+
+    <div class="info-box">💡 Hubungi admin via WhatsApp jika verifikasi memerlukan waktu lebih lama.</div>
+    <a id="tombolWA" class="btn wa-btn" href="#" target="_blank">💬 Konfirmasi Transfer via Whatsapp</a>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</body>
+</html>
