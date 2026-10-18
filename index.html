@@ -23,7 +23,7 @@
   .container {
     max-width: 680px;
     margin: 0 auto;
-    background: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.95);
     backdrop-filter: blur(4px);
     border-radius: 24px;
     padding: 1.2rem 1.4rem 1.6rem 1.4rem;
@@ -60,6 +60,18 @@
   button:hover, .btn:hover { background-color: #115e59; }
   button:disabled { opacity: 0.6; cursor: not-allowed; }
 
+  /* TAB NAVIGASI DASHBOARD */
+  .tab-nav {
+    display: flex; gap: 0.5rem; margin-bottom: 1.2rem; background: #e0f2fe; padding: 0.4rem; border-radius: 16px;
+  }
+  .tab-btn {
+    flex: 1; padding: 0.75rem 0.5rem; font-size: 0.95rem; font-weight: 700; border-radius: 12px;
+    background: transparent; color: #0369a1; border: none; cursor: pointer; transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--hijau-tua); color: white; box-shadow: 0 2px 8px rgba(15,118,110,0.25);
+  }
+
   .info-box { background: #dbeafe; color: #1e3a5f; border-radius: 16px; padding: 1rem 1.2rem; margin-bottom: 1rem; line-height: 1.6; }
   .error-box { background: #fee2e2; color: #991b1b; border-radius: 16px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
   .success-box { background: #d1fae5; color: #065f46; border-radius: 16px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
@@ -68,7 +80,7 @@
   .kartu-santri .nilai-nama { font-size: 1.3rem; font-weight: 700; color: #111827; margin-top: 0.2rem; }
   .kartu-santri .nilai-saldo { font-size: 1.7rem; font-weight: 800; color: var(--hijau-tua); margin-top: 0.2rem; }
 
-  h3 { text-align: left; color: #111827; }
+  h3 { text-align: left; color: #111827; margin-top: 0.5rem; }
   .mode-tanggal { display: flex; gap: 1rem; margin-bottom: 0.8rem; }
   .mode-tanggal label { display: flex; align-items: center; gap: 0.4rem; font-weight: 500; margin-bottom: 0; }
   .mode-tanggal input[type="radio"] { width: auto; margin: 0; }
@@ -94,7 +106,7 @@
 
   .wa-btn { background-color: #25D366; box-shadow: 0 4px 10px rgba(37,211,102,0.3); margin-top: 0.8rem; }
   .wa-btn:hover { background-color: #1ebc59; }
-  .hidden { display: none; }
+  .hidden { display: none !important; }
   .spinner { text-align: center; padding: 1rem; color: #6b7280; }
 </style>
 </head>
@@ -134,41 +146,51 @@
       <div class="nilai-saldo" id="saldoSantri">Rp 0</div>
     </div>
 
-    <!-- ========== MUTASI ========== -->
-    <div id="riwayatWrapper">
-      <h3>📅 Filter Tanggal</h3>
-      <div class="mode-tanggal">
-        <label><input type="radio" name="modeTanggal" value="satu_hari" checked> Per 1 Hari</label>
-        <label><input type="radio" name="modeTanggal" value="rentang"> Rentang Tanggal</label>
-      </div>
-
-      <div id="satuHariWrapper">
-        <input type="date" id="tanggalSatu">
-      </div>
-
-      <div id="rentangWrapper" class="rentang-wrapper">
-        <div><label>Dari</label><input type="date" id="tanggalAwal"></div>
-        <div><label>Sampai</label><input type="date" id="tanggalAkhir"></div>
-      </div>
-
-      <h3>📜 Riwayat Mutasi Transaksi (Debit / Kredit)</h3>
-      <p style="color:#6b7280; font-size:0.9rem; margin-top:-0.5rem;">Berikut adalah catatan pengeluaran jajan dan top-up ananda:</p>
-      <div id="tabelRiwayat" class="table-scroll"></div>
-
-      <h3>📊 Total Transaksi Per Tanggal</h3>
-      <div id="tabelHarian" class="table-scroll"></div>
+    <!-- TAB NAVIGASI MENU -->
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tabMutasiBtn" onclick="bukaTab('mutasi')">📜 Riwayat Transaksi</button>
+      <button class="tab-btn" id="tabSppBtn" onclick="bukaTab('spp')">🧾 Tagihan SPP</button>
     </div>
 
-    <div id="tidakAdaRiwayat" class="info-box hidden">📭 Belum ada riwayat transaksi jajan atau top-up untuk kartu ini.</div>
+    <!-- ========== TAB 1: RIWAYAT MUTASI ========== -->
+    <div id="tabMutasiContent">
+      <div id="riwayatWrapper">
+        <h3>📅 Filter Tanggal</h3>
+        <div class="mode-tanggal">
+          <label><input type="radio" name="modeTanggal" value="satu_hari" checked> Per 1 Hari</label>
+          <label><input type="radio" name="modeTanggal" value="rentang"> Rentang Tanggal</label>
+        </div>
 
-    <!-- ========== TAGIHAN SPP ========== -->
-    <h3>🧾 Tagihan SPP Bulanan</h3>
-    <div id="ringkasSpp" class="ringkas-spp"></div>
-    <div id="tabelSpp" class="table-scroll"></div>
-    <div id="tidakAdaSpp" class="info-box hidden">📭 Belum ada data tagihan SPP untuk santri ini.</div>
+        <div id="satuHariWrapper">
+          <input type="date" id="tanggalSatu">
+        </div>
+
+        <div id="rentangWrapper" class="rentang-wrapper">
+          <div><label>Dari</label><input type="date" id="tanggalAwal"></div>
+          <div><label>Sampai</label><input type="date" id="tanggalAkhir"></div>
+        </div>
+
+        <h3>📜 Riwayat Mutasi Transaksi (Debit / Kredit)</h3>
+        <p style="color:#6b7280; font-size:0.9rem; margin-top:-0.5rem;">Berikut adalah catatan pengeluaran jajan dan top-up ananda:</p>
+        <div id="tabelRiwayat" class="table-scroll"></div>
+
+        <h3>📊 Total Transaksi Per Tanggal</h3>
+        <div id="tabelHarian" class="table-scroll"></div>
+      </div>
+
+      <div id="tidakAdaRiwayat" class="info-box hidden">📭 Belum ada riwayat transaksi jajan atau top-up untuk kartu ini.</div>
+    </div>
+
+    <!-- ========== TAB 2: TAGIHAN SPP ========== -->
+    <div id="tabSppContent" class="hidden">
+      <h3>🧾 Tagihan SPP Bulanan</h3>
+      <div id="ringkasSpp" class="ringkas-spp"></div>
+      <div id="tabelSpp" class="table-scroll"></div>
+      <div id="tidakAdaSpp" class="info-box hidden">📭 Belum ada data tagihan SPP untuk santri ini.</div>
+    </div>
 
     <!-- ========== UPLOAD BUKTI TRANSFER ========== -->
-    <div class="kartu-upload">
+    <div class="kartu-upload" style="margin-top: 1.5rem;">
       <h3>📤 Form Upload Bukti Transfer</h3>
       <p style="color:#6b7280; font-size:0.9rem; margin-bottom: 0.8rem;">Sudah transfer ke QRIS / Rekening Pondok? Unggah buktinya di sini agar diverifikasi oleh admin keuangan.</p>
       
@@ -221,7 +243,29 @@ let sedangMencari = false;
 const NAMA_BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
 // ==========================================
-// 2. FUNGSI BANTUAN
+// 2. NAVIGASI TAB MENU
+// ==========================================
+function bukaTab(namaTab) {
+  const tabMutasiBtn = document.getElementById("tabMutasiBtn");
+  const tabSppBtn = document.getElementById("tabSppBtn");
+  const contentMutasi = document.getElementById("tabMutasiContent");
+  const contentSpp = document.getElementById("tabSppContent");
+
+  if (namaTab === 'mutasi') {
+    tabMutasiBtn.classList.add("active");
+    tabSppBtn.classList.remove("active");
+    contentMutasi.classList.remove("hidden");
+    contentSpp.classList.add("hidden");
+  } else {
+    tabSppBtn.classList.add("active");
+    tabMutasiBtn.classList.remove("active");
+    contentSpp.classList.remove("hidden");
+    contentMutasi.classList.add("hidden");
+  }
+}
+
+// ==========================================
+// 3. FUNGSI BANTUAN
 // ==========================================
 function tampilkanError(pesan) {
   const el = document.getElementById("pesanError");
@@ -271,7 +315,7 @@ function formatWaktuTampil(iso) {
 }
 
 // ==========================================
-// 3. CARI DATA SANTRI
+// 4. CARI DATA SANTRI
 // ==========================================
 async function cariSantri(uid) {
   if (sedangMencari) return;
@@ -336,7 +380,7 @@ async function ambilSpp(santri) {
 }
 
 // ==========================================
-// 4. RENDER
+// 5. RENDER
 // ==========================================
 function renderData() {
   document.getElementById("pesanAwal").classList.add("hidden");
@@ -497,7 +541,7 @@ function renderSpp() {
 }
 
 // ==========================================
-// 5. UPLOAD BUKTI TRANSFER KE SUPABASE STORAGE
+// 6. UPLOAD BUKTI TRANSFER KE SUPABASE STORAGE
 // ==========================================
 async function uploadBuktiTransfer() {
   const fileInput = document.getElementById("fileBukti");
@@ -523,7 +567,8 @@ async function uploadBuktiTransfer() {
 
   try {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${dataSantriSaatIni.ID}_${Date.now()}.${fileExt}`;
+    const namaBersih = (dataSantriSaatIni.Nama || "Santri").replace(/[^a-zA-Z0-9]/g, "");
+    const fileName = `${dataSantriSaatIni.ID}_${namaBersih}_${jenis}_${Date.now()}.${fileExt}`;
     const filePath = `bukti/${fileName}`;
 
     const { error: uploadError } = await supabaseClient.storage
@@ -556,7 +601,7 @@ async function uploadBuktiTransfer() {
 
   } catch (err) {
     console.error("Gagal upload:", err);
-    tampilkanError("Gagal mengunggah: " + (err.message || "Pastikan bucket Supabase Storage 'bukti-transfer' sudah dibuat."));
+    tampilkanError("Gagal mengunggah: " + (err.message || "Pastikan RLS / Policy di Supabase sudah diatur ke 'Allow Insert'."));
   } finally {
     btn.disabled = false;
     btn.textContent = "📤 Kirim Bukti Transfer";
@@ -564,7 +609,7 @@ async function uploadBuktiTransfer() {
 }
 
 // ==========================================
-// 6. EVENT LISTENERS
+// 7. EVENT LISTENERS
 // ==========================================
 document.getElementById("btnCari").addEventListener("click", () => {
   const uid = document.getElementById("uidInput").value.trim();
