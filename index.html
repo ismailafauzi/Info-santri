@@ -169,7 +169,7 @@
     <div class="menu-3-kolom">
       <button class="btn-kolom active" id="btnMutasi" onclick="gantiTab('mutasi')">
         <span>📜</span>
-        <span>Cek Riwayat Transaksi</span>
+        <span>Cek Riwayat Jajan</span>
       </button>
       <button class="btn-kolom" id="btnSpp" onclick="gantiTab('spp')">
         <span>🧾</span>
@@ -185,11 +185,11 @@
     <div class="kartu-santri">
       <div class="label">Nama Santri</div>
       <div class="nilai-nama" id="namaSantri">-</div>
-      <div class="label" style="margin-top: 0.9rem;">Sisa Saldo Saat Ini</div>
+      <div class="label" style="margin-top: 0.9rem;">Sisa Saldo Uang Saku</div>
       <div class="nilai-saldo" id="saldoSantri">Rp 0</div>
     </div>
 
-    <!-- ==================== TAB 1: RIWAYAT TRANSAKSI ==================== -->
+    <!-- ==================== TAB 1: RIWAYAT JAJAN ==================== -->
     <div id="tabMutasi">
       <div id="riwayatWrapper">
         <h3>📅 Filter Tanggal</h3>
@@ -207,11 +207,11 @@
           <div><label>Sampai</label><input type="date" id="tanggalAkhir"></div>
         </div>
 
-        <h3>📜 Riwayat Mutasi Transaksi (Debit / Kredit)</h3>
-        <p style="color:#6b7280; font-size:0.9rem; margin-top:-0.5rem;">Berikut adalah catatan pengeluaran jajan dan top-up ananda:</p>
+        <h3>📜 Riwayat Transaksi Jajan &amp; Top-Up</h3>
+        <p style="color:#6b7280; font-size:0.9rem; margin-top:-0.5rem;">Catatan penggunaan uang saku dan isi ulang saldo ananda:</p>
         <div id="tabelRiwayat" class="table-scroll"></div>
 
-        <h3>📊 Total Transaksi Per Tanggal</h3>
+        <h3>📊 Total Transaksi Jajan Per Tanggal</h3>
         <div id="tabelHarian" class="table-scroll"></div>
       </div>
 
@@ -453,7 +453,13 @@ function renderData() {
 }
 
 function renderMutasiSection() {
-  if (logDataSaatIni.length === 0) {
+  // Hanya ambil transaksi jajan & top up saja (mengabaikan log SPP/pending SPP)
+  const mutasiJajan = logDataSaatIni.filter((r) => {
+    const st = String(r.Status || "").toLowerCase();
+    return !st.includes("spp");
+  });
+
+  if (mutasiJajan.length === 0) {
     document.getElementById("riwayatWrapper").classList.add("hidden");
     document.getElementById("tidakAdaRiwayat").classList.remove("hidden");
     return;
@@ -461,7 +467,7 @@ function renderMutasiSection() {
   document.getElementById("riwayatWrapper").classList.remove("hidden");
   document.getElementById("tidakAdaRiwayat").classList.add("hidden");
 
-  const tgl = logDataSaatIni.map((r) => ambilTanggalLokal(r.Waktu)).sort();
+  const tgl = mutasiJajan.map((r) => ambilTanggalLokal(r.Waktu)).sort();
   const min = tgl[0], max = tgl[tgl.length - 1];
 
   const satu = document.getElementById("tanggalSatu");
@@ -483,10 +489,15 @@ function terapkanFilterTanggal() {
     a = document.getElementById("tanggalAwal").value;
     b = document.getElementById("tanggalAkhir").value;
   }
+
+  // Hanya memuat riwayat khusus Jajan & Top Up
   const hasil = logDataSaatIni.filter((r) => {
+    const st = String(r.Status || "").toLowerCase();
     const t = ambilTanggalLokal(r.Waktu);
-    return (!a || t >= a) && (!b || t <= b);
+    const bukanSpp = !st.includes("spp");
+    return bukanSpp && (!a || t >= a) && (!b || t <= b);
   });
+
   renderTabelRiwayat(hasil);
   renderTabelHarian(hasil);
 }
@@ -494,7 +505,7 @@ function terapkanFilterTanggal() {
 function renderTabelRiwayat(data) {
   const w = document.getElementById("tabelRiwayat");
   if (data.length === 0) {
-    w.innerHTML = '<p style="color:#6b7280;">Tidak ada transaksi pada tanggal yang dipilih.</p>';
+    w.innerHTML = '<p style="color:#6b7280;">Tidak ada transaksi jajan pada tanggal yang dipilih.</p>';
     return;
   }
   let html = "<table><thead><tr><th>Waktu Transaksi 📅</th><th>Nominal (Rp) 💵</th><th>Keterangan Status 📝</th></tr></thead><tbody>";
